@@ -1,5 +1,4 @@
-# Audiobooks
-
+# Aura
 A local audiobook and EPUB library application. It includes a Spring Boot API for importing, cataloguing, and streaming media, a browser-based interface, and an Electron desktop shell.
 
 ## Features
