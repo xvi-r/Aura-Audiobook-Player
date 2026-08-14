@@ -1,12 +1,16 @@
 # Aura
 A local audiobook and EPUB library application. It includes a Spring Boot API for importing, cataloguing, and streaming media, a browser-based interface, and an Electron desktop shell.
 
+> **Development status:** This is an in-development project, not a finished product. Features, APIs, and data formats may change, and some edge cases still need refinement.
+
 ## Features
 
 - Import M4B, MP3, and M4A audiobooks and read their metadata and chapters.
 - Extract audiobook cover art with FFmpeg.
 - Import EPUB e-books, optionally associating them with an audiobook.
 - Browse library metadata, cover art, audio files, and EPUB files through the REST API.
+- Correct incomplete or unreliable embedded audiobook metadata with an Audible ASIN. The web UI can retrieve title, cover, series, publisher, genres, runtime, and chapter timestamps from Audnex.
+- Look up selected words while reading EPUBs using dictionary and Wikipedia results, with a Wookieepedia (Star Wars Fandom) lookup when a general definition is not available.
 - Run the web interface in a browser or in the Electron desktop app.
 
 ## Project layout
@@ -101,6 +105,8 @@ Also excluded are local configuration, Node dependencies, Java build artifacts, 
 ```powershell
 git status
 ```
+
+The ASIN metadata and in-reader lookup features use third-party services (Audnex, DictionaryAPI, Wikipedia, Wiktionary, and Wookieepedia). They need an internet connection, may be unavailable or incomplete, and should be treated as helpful corrections rather than an authoritative source of metadata.
 
 ## Development
 
