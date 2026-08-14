@@ -115,3 +115,11 @@ Run the backend test suite:
 ```powershell
 .\mvnw.cmd test
 ```
+
+## API documentation
+
+With the backend running, explore and try the REST API in Swagger UI:
+
+```text
+http://localhost:8080/swagger-ui/index.html
+```
