@@ -1,11 +1,11 @@
-# Aura
+# Aura - Audiobook Player
 
-![Status](https://img.shields.io/badge/status-in%20development-f59e0b?style=flat-square)
-![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.0-6DB33F?style=flat-square&logo=springboot&logoColor=white)
-![Electron](https://img.shields.io/badge/Electron-43-47848F?style=flat-square&logo=electron&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-supported-4169E1?style=flat-square&logo=postgresql&logoColor=white)
-![API](https://img.shields.io/badge/API-Swagger%20%2F%20OpenAPI-85EA2D?style=flat-square&logo=swagger&logoColor=black)
+![Status](https://img.shields.io/badge/status-in%20development-f59e0b?style=plastic)
+![Java](https://img.shields.io/badge/Java-21-ED8B00?style=plastic&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.0-6DB33F?style=plastic&logo=springboot&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-43-47848F?style=plastic&logo=electron&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-supported-4169E1?style=plastic&logo=postgresql&logoColor=white)
+![API](https://img.shields.io/badge/API-Swagger%20%2F%20OpenAPI-85EA2D?style=plastic&logo=swagger&logoColor=black)
 
 A local audiobook and EPUB library application. It includes a Spring Boot API for importing, cataloguing, and streaming media, a browser-based interface, and an Electron desktop shell.
 
