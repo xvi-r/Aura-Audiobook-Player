@@ -5,6 +5,7 @@ import com.example.audiobooks.service.AudiobookService;
 import com.example.audiobooks.service.EBookService;
 
 import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,19 +31,19 @@ public class AudiobookController {
     }
 
     @GetMapping("/api/audiobooks")
-        public List<Audiobook> getAllAudiobooks() {
-            return service.getAllAudiobooks();
+    public List<Audiobook> getAllAudiobooks() {
+        return service.getAllAudiobooks();
     }
 
     @GetMapping("/api/audiobooks/{id}")
-        public Audiobook getAudiobook(@PathVariable Long id) {
+    public Audiobook getAudiobook(@PathVariable Long id) {
         return service.getAudiobookById(id);
     }
 
     // TODO: change to /api/upload/audiobook
     @PostMapping(value = "/api/upload", consumes = "multipart/form-data")
     public String upload(@RequestParam("file") MultipartFile file) throws Exception {
-    
+
         service.importAudiobook(file);
 
         System.out.println("Received file: " + file.getOriginalFilename());
@@ -50,14 +51,23 @@ public class AudiobookController {
 
         return "Upload successful!";
     }
-    
+
+    @GetMapping("api/audiobooks/{id}/cover")
+    public ResponseEntity<Resource> getCover(@PathVariable Long id) throws IOException {
+
+        Resource cover = service.getCover(id);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .body(cover);
+    }
+
     @CrossOrigin(origins = "*")
     @GetMapping(value = "/api/audiobooks/{id}/file", produces = "application/epub+zip")
     public ResponseEntity<Resource> getAudioFile(
             @PathVariable Long id,
-            @RequestHeader(value = "Range", required = false) String range
-    ) throws IOException {
+            @RequestHeader(value = "Range", required = false) String range) throws IOException {
 
         return service.getAudioFile(id, range);
     }
-    }
+}
