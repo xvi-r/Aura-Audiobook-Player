@@ -1,0 +1,22 @@
+{
+  "name": "audiobooks-electron",
+  "version": "1.0.0",
+  "description": "Audiobooks desktop application",
+  "main": "main.js",
+  "author": "Audiobooks",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "43.3.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.audiobooks.app",
+    "productName": "Audiobooks",
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

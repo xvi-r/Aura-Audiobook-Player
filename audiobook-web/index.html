@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aura</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  
+  <!-- SEO & Metadata -->
+  <meta name="description" content="Experience your personal audiobook collection in a high-end, premium dark theme. Featuring intelligent playback speed adjustments, smart sleep timers, and immersive designs.">
+  <meta name="theme-color" content="#0d1118">
+  
+  <!-- Google Fonts - Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- App Stylesheets -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/library.css">
+  <link rel="stylesheet" href="css/details.css">
+  <link rel="stylesheet" href="css/player.css">
+  <link rel="stylesheet" href="css/now_playing.css">
+  <link rel="stylesheet" href="css/collections.css">
+  <link rel="stylesheet" href="css/equalizer.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/upload.css">
+  <link rel="stylesheet" href="css/epub_reader.css">
+  
+  <!-- Lucide Icons Library & EPUB Parser Libraries (CDN) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+</head>
+<body>
+
+  <!-- App Main Frame -->
+  <div id="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" role="navigation" aria-label="Main Navigation">
+      <div class="logo-container">
+        <div class="logo-icon">
+          <i data-lucide="headphones"></i>
+        </div>
+        <span class="logo-text">AURA</span>
+      </div>
+
+      <!-- Navigation Group 1: Discover -->
+      <div class="nav-group">
+        <h3 class="nav-label">Discover</h3>
+        <ul class="nav-list">
+          <li class="nav-item">
+            <a href="#library" id="sidebar-lib-link">
+              <i data-lucide="compass"></i>
+              <span>Library</span>
+            </a>
+          </li>
+          <li class="nav-item" id="sidebar-now-playing-item" style="display: none;">
+            <a href="#now-playing">
+              <i data-lucide="disc"></i>
+              <span>Now Playing</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#upload">
+              <i data-lucide="upload-cloud"></i>
+              <span>Upload Book</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Navigation Group 2: Personal Shelf -->
+      <div class="nav-group">
+        <h3 class="nav-label">My Books</h3>
+        <ul class="nav-list">
+          <li class="nav-item">
+            <a href="#recently-played">
+              <i data-lucide="clock-3"></i>
+              <span>Recently Played</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#favorites">
+              <i data-lucide="heart"></i>
+              <span>Favorites</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#collections">
+              <i data-lucide="folder-heart"></i>
+              <span>Collections</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Navigation Group 3: Settings -->
+      <div class="nav-group">
+        <h3 class="nav-label">Preferences</h3>
+        <ul class="nav-list">
+          <li class="nav-item">
+            <a href="#equalizer">
+              <i data-lucide="sliders"></i>
+              <span>Equalizer</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#settings">
+              <i data-lucide="settings"></i>
+              <span>Settings</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+    </aside>
+
+    <!-- Main Content Pane -->
+    <main id="main-content" role="main">
+      <!-- Dynamic views render here -->
+      <div style="display: flex; align-items: center; justify-content: center; height: 100%;">
+        <div style="text-align: center; color: var(--text-muted);">
+          <i data-lucide="loader" class="spinner-icon" style="width: 32px; height: 32px; margin-bottom: 12px;"></i>
+          <p>Loading Aura Library...</p>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Persistent Bottom Audiobook Player -->
+  <footer id="audio-player-bar" role="contentinfo" aria-label="Audiobook Player Controls">
+    
+    <!-- Left Panel: Book Cover & Chapter info -->
+    <div class="player-track-info">
+      <div class="player-thumbnail">
+        <img>
+      </div>
+      <div class="player-metadata">
+        <span class="player-track-title"></span>
+        <span class="player-track-author"></span>
+        <span class="player-track-chapter"></span>
+      </div>
+    </div>
+
+    <!-- Center Panel: Audio controls & Timeline Progress -->
+    <div class="player-controls-hub">
+      
+      <!-- Action Buttons -->
+      <div class="player-buttons">
+        <button class="player-btn player-btn-secondary" id="p-prev-chapter" title="Previous Chapter">
+          <i data-lucide="skip-back"></i>
+        </button>
+        <button class="player-btn player-btn-secondary player-btn-skip-container" id="p-rewind" title="Rewind 15 seconds">
+          <i data-lucide="rotate-ccw"></i>
+        </button>
+        <button class="player-btn player-btn-play" id="p-play-pause" title="Play / Pause">
+          <i data-lucide="play"></i>
+        </button>
+        <button class="player-btn player-btn-secondary player-btn-skip-container" id="p-forward" title="Skip forward 30 seconds">
+          <i data-lucide="rotate-cw"></i>
+        </button>
+        <button class="player-btn player-btn-secondary" id="p-next-chapter" title="Next Chapter">
+          <i data-lucide="skip-forward"></i>
+        </button>
+      </div>
+
+      <!-- Progressive Scrub Bar -->
+      <div class="player-timeline-container">
+        <span class="time-label" id="p-time-elapsed">00:00</span>
+        <div class="timeline-slider-wrapper">
+          <input 
+            type="range" 
+            id="p-timeline" 
+            class="timeline-slider" 
+            min="0" 
+            max="100" 
+            step="any"
+            value="0"
+            aria-label="Audiobook Progress"
+          />
+        </div>
+        <span class="time-label" id="p-time-duration">00:00</span>
+        <button class="player-btn player-btn-secondary player-view-mode-btn" id="p-view-mode-btn" title="Toggle Book / Chapter View">
+          <i data-lucide="split"></i>
+        </button>
+      </div>
+      
+    </div>
+
+    <!-- Right Panel: Volume, Speed & Sleep settings -->
+    <div class="player-utilities">
+      
+      <!-- Chapter List Chooser -->
+      <div class="util-btn" id="p-chapters-btn" title="Select Chapter" role="button" tabindex="0">
+        <i data-lucide="list"></i>
+        <span id="p-chapters-label">Chapters</span>
+        <!-- Popup list -->
+        <div class="util-popup util-popup-chapters" id="p-chapters-popup">
+          <!-- Dynamically populated chapters -->
+        </div>
+      </div>
+
+      <!-- Read eBook EPUB Button -->
+      <div class="util-btn" id="p-read-epub-btn" title="Read & Listen eBook" role="button" tabindex="0" style="background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.4); color: #a78bfa;">
+        <i data-lucide="book-open"></i>
+        <span>Read</span>
+      </div>
+
+      <!-- Playback Speed Modifier -->
+      <div class="util-btn" id="p-speed-btn" title="Playback Speed" role="button" tabindex="0">
+        <i data-lucide="gauge"></i>
+        <span id="p-speed-label">1x</span>
+        <!-- Popup list -->
+        <div class="util-popup" id="p-speed-popup">
+          <button class="popup-item active" data-rate="1.0">1x</button>
+          <button class="popup-item" data-rate="1.25">1.25x</button>
+          <button class="popup-item" data-rate="1.5">1.5x</button>
+          <button class="popup-item" data-rate="2.0">2x</button>
+        </div>
+      </div>
+
+      <!-- Sleep Timer Indicator -->
+      <div class="util-btn" id="p-sleep-btn" title="Sleep Timer" role="button" tabindex="0">
+        <i data-lucide="timer"></i>
+        <span id="p-sleep-label">Sleep</span>
+        <!-- Popup list -->
+        <div class="util-popup" id="p-sleep-popup">
+          <button class="popup-item active" data-mins="0">Off</button>
+          <button class="popup-item" data-mins="10">10 Minutes</button>
+          <button class="popup-item" data-mins="15">15 Minutes</button>
+          <button class="popup-item" data-mins="30">30 Minutes</button>
+          <button class="popup-item" data-mins="45">45 Minutes</button>
+          <button class="popup-item" data-mins="60">60 Minutes</button>
+          <button class="popup-item" data-mins="chapter">End of Chapter</button>
+        </div>
+      </div>
+
+      <!-- Volume Controller -->
+      <div class="volume-container">
+        <button class="player-btn player-btn-secondary" id="p-volume-mute" title="Mute Toggle" style="cursor: default;">
+          <i data-lucide="volume-2" id="p-volume-icon"></i>
+        </button>
+        <input 
+          type="range" 
+          id="p-volume" 
+          class="volume-slider" 
+          min="0" 
+          max="1" 
+          step="any" 
+          value="0.8"
+          aria-label="Volume Slider"
+        />
+      </div>
+
+    </div>
+
+  </footer>
+
+  <!-- Application Logic (ES Module) -->
+  <script type="module" src="js/app.js"></script>
+
+</body>
+</html>

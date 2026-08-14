@@ -1,0 +1,266 @@
+@import url('variables.css');
+
+/* Global Reset & Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide scrollbars globally across all browsers while maintaining full scroll capability */
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE / Edge */
+}
+
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* App Shell Layout */
+#app-container {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - 90px); /* Account for player height */
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sidebar Styling - Structured & Understated */
+#sidebar {
+  width: 250px;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  flex-shrink: 0;
+  z-index: 10;
+  transition: var(--transition-smooth);
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 32px;
+  padding-left: 8px;
+}
+
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-primary);
+}
+
+.logo-icon i,
+.logo-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.logo-text {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text-main);
+}
+
+.nav-group {
+  margin-bottom: 24px;
+}
+
+.nav-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  padding-left: 8px;
+  font-weight: 700;
+}
+
+.nav-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-item a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  transition: var(--transition-quick);
+  cursor: pointer;
+}
+
+.nav-item a:hover {
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+}
+
+/* Inactive tabs have standard text, active tab has a solid left bar and warm highlight */
+.nav-item.active a {
+  background: transparent;
+  color: var(--text-active);
+  font-weight: 600;
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding-left: 9px; /* Offset the left border */
+}
+
+.nav-item a i,
+.nav-item a svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+/* User Profile Widget in Sidebar */
+.user-widget {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 8px 0 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.user-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.user-role {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Main Content Panel */
+#main-content {
+  flex-grow: 1;
+  height: 100%;
+  overflow-y: auto;
+  background-color: var(--bg-primary);
+  padding: 24px 32px 80px; /* extra bottom padding so last grid row isn't clipped */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Flat structured card utility */
+.flat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Subtle view transition */
+.fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive sidebar */
+@media (max-width: 768px) {
+  #sidebar {
+    width: 60px;
+    padding: 16px 4px;
+  }
+  .logo-text, .nav-label, .user-info, .user-widget {
+    display: none;
+  }
+  .logo-container {
+    justify-content: center;
+    margin-bottom: 20px;
+    padding-left: 0;
+  }
+  .nav-item a {
+    justify-content: center;
+    padding: 8px;
+  }
+  .nav-item.active a {
+    border-radius: var(--radius-sm);
+    border-left: none;
+    background: var(--bg-surface);
+  }
+}
+
+/* Spinner Animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-icon {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}

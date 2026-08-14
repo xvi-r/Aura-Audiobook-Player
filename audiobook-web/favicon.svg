@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#0d1118"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f27d11"/>
+      <stop offset="100%" style="stop-color:#e5a93c"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="32" fill="url(#bg)"/>
+  <!-- Headphones shape -->
+  <path d="M16 34 C16 24 23 16 32 16 C41 16 48 24 48 34" fill="none" stroke="url(#accent)" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Left ear cup -->
+  <rect x="12" y="33" width="8" height="13" rx="4" fill="url(#accent)"/>
+  <!-- Right ear cup -->
+  <rect x="44" y="33" width="8" height="13" rx="4" fill="url(#accent)"/>
+</svg>
