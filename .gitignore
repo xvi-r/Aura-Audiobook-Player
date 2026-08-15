@@ -40,6 +40,7 @@ target/classes/application.properties
 
 # App Data & Media Files
 app-data/
+discord-rpc/
 
 # Dependencies
 electron/node_modules/
