@@ -2,7 +2,6 @@ package com.example.audiobooks.controller;
 
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.service.AudiobookService;
-import com.example.audiobooks.service.EBookService;
 
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;

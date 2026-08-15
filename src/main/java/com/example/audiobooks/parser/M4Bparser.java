@@ -6,18 +6,13 @@ import com.example.audiobooks.parser.dto.FFprobeChapter;
 import com.example.audiobooks.parser.dto.FFprobeResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.jaudiotagger.audio.AudioFile;
-import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.tag.FieldKey;
-import org.jaudiotagger.tag.KeyNotFoundException;
-import org.jaudiotagger.tag.Tag;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.Field;
+
 
 @Component
 public class M4Bparser {
