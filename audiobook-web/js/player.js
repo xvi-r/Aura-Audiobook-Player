@@ -1119,7 +1119,8 @@ class PlayerController {
 
     const npBtn = document.getElementById("np-view-mode-btn");
     if (npBtn) {
-      npBtn.innerHTML = `<i data-lucide="${iconName}"></i><span>${labelText}</span>`;
+      npBtn.innerHTML = `<i data-lucide="${iconName}"></i><span>${isChapter ? "Chapter" : "Book"}</span>`;
+      npBtn.setAttribute("title", `Toggle Book / Chapter View (${labelText})`);
     }
 
     if (this.viewModeBtn) {

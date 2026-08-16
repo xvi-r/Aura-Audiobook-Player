@@ -99,12 +99,6 @@ export const renderNowPlaying = () => {
             </div>
             <span class="np-time-label" id="np-total-time">${player.formatTime(totalDuration)}</span>
           </div>
-          <div class="np-view-mode-bar" style="display: flex; justify-content: flex-end; margin-top: 6px;">
-            <button class="player-btn player-btn-secondary player-view-mode-btn" id="np-view-mode-btn" title="Toggle Book / Chapter View">
-              <i data-lucide="split"></i>
-              <span>${player.timelineMode === "chapter" ? "Chapter View" : "Book View"}</span>
-            </button>
-          </div>
         </div>
 
         <!-- 4. Playback Controls (tactile & clean) -->
@@ -148,10 +142,10 @@ export const renderNowPlaying = () => {
             </div>
           </div>
 
-          <!-- Read eBook Button -->
-          <div class="util-btn" id="np-read-epub-btn" title="Read & Listen eBook" role="button" tabindex="0" style="background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.4); color: #a78bfa;">
-            <i data-lucide="book-open"></i>
-            <span>Read</span>
+          <!-- View Mode Toggle Button -->
+          <div class="util-btn" id="np-view-mode-btn" title="Toggle Book / Chapter View (${player.timelineMode === 'chapter' ? 'Chapter View' : 'Book View'})" role="button" tabindex="0">
+            <i data-lucide="${player.timelineMode === 'chapter' ? 'split' : 'book-open'}"></i>
+            <span>${player.timelineMode === 'chapter' ? 'Chapter' : 'Book'}</span>
           </div>
 
           <!-- Playback Speed Modifier -->
@@ -231,16 +225,7 @@ const setupNPEventListeners = (book, coverUrl) => {
   const viewModeBtn = document.getElementById("np-view-mode-btn");
   const artworkWrapper = document.querySelector(".np-artwork-wrapper");
 
-  const readEpubBtn = document.getElementById("np-read-epub-btn");
-  if (readEpubBtn) {
-    readEpubBtn.addEventListener("click", () => {
-      try {
-        openEpubReader(book, player.currentChapterIndex || 0);
-      } catch (err) {
-        console.error("Failed to open EPUB reader from Now Playing view:", err);
-      }
-    });
-  }
+
 
   if (artworkWrapper) {
     artworkWrapper.style.cursor = "pointer";
