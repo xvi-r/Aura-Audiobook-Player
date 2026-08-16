@@ -84,4 +84,9 @@ public class AudiobookController {
         return progressService.updateProgress(audiobookId, request);
 
     }
+
+    @GetMapping("/api/audiobooks/{audiobookId}/progress")
+    public AudiobookProgressResponse getProgress(@PathVariable Long audiobookId) {
+        return progressService.getProgressForAudiobook(audiobookId);
+    }
 }
