@@ -38,7 +38,12 @@ export const renderFavorites = async () => {
   };
 
   allBooks.forEach(b => {
-    b.progressSeconds = b.position ?? b.progressSeconds ?? 0;
+    const pos = (b.progressResponse && b.progressResponse.position !== undefined && b.progressResponse.position !== null)
+      ? parseFloat(b.progressResponse.position)
+      : (b.position !== undefined && b.position !== null ? parseFloat(b.position) : (b.progressSeconds || 0));
+    b.position = pos;
+    b.progressSeconds = pos;
+    b.completed = b.progressResponse ? !!b.progressResponse.completed : false;
     let customCover = null;
     if (b.id) {
       try {

@@ -40,6 +40,33 @@ export async function renderDetails(bookId) {
 
   book.id = book.id ?? book.bookId ?? book._id ?? book.audiobookId ?? bookId;
 
+  // Parse embedded progressResponse or fetch freshest progress
+  if (book.progressResponse !== undefined) {
+    if (book.progressResponse && book.progressResponse.position !== undefined && book.progressResponse.position !== null) {
+      book.position = parseFloat(book.progressResponse.position);
+      book.progressSeconds = parseFloat(book.progressResponse.position);
+      book.completed = !!book.progressResponse.completed;
+    } else {
+      book.position = 0;
+      book.progressSeconds = 0;
+      book.completed = false;
+    }
+  } else if (book.position !== undefined && book.position !== null) {
+    book.progressSeconds = parseFloat(book.position);
+  } else {
+    try {
+      const progRes = await fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}/progress`, {}, 2500);
+      if (progRes.ok) {
+        const progData = await progRes.json();
+        if (progData && progData.position !== undefined && progData.position !== null) {
+          book.position = parseFloat(progData.position);
+          book.progressSeconds = parseFloat(progData.position);
+          book.completed = progData.completed;
+        }
+      }
+    } catch (e) {}
+  }
+
   // Look up matching mock entry by ID or title
   const mockMatch = AUDIOBOOKS.find((b) => 
     String(b.id) === String(book.id) || 

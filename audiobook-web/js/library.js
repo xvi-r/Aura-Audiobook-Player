@@ -65,7 +65,12 @@ export async function renderLibrary(searchQuery = "") {
         if (overrides.genres && Array.isArray(overrides.genres) && (!b.genres || b.genres.length === 0)) b.genres = overrides.genres;
       } catch (e) {}
     }
-    b.progressSeconds = b.position ?? b.progressSeconds ?? 0;
+    const pos = (b.progressResponse && b.progressResponse.position !== undefined && b.progressResponse.position !== null)
+      ? parseFloat(b.progressResponse.position)
+      : (b.position !== undefined && b.position !== null ? parseFloat(b.position) : (b.progressSeconds || 0));
+    b.position = pos;
+    b.progressSeconds = pos;
+    b.completed = b.progressResponse ? !!b.progressResponse.completed : false;
     b.lastPlayedTimestamp = b.lastPlayedTimestamp || 0;
     b.runtimeSeconds = b.duration || 0;
 

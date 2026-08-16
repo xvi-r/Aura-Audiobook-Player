@@ -511,10 +511,12 @@ class PlayerController {
       nowPlayingItem.style.display = "block";
     }
 
-    // Determine target seek time (Check position, progress.position, progressSeconds)
+    // Determine target seek time (Check progressResponse, position, progress.position, progressSeconds)
     let targetTime = 0;
     if (elapsedBookSeconds !== null && elapsedBookSeconds !== undefined) {
       targetTime = elapsedBookSeconds;
+    } else if (book.progressResponse && book.progressResponse.position !== undefined && book.progressResponse.position !== null) {
+      targetTime = parseFloat(book.progressResponse.position);
     } else if (book.position !== undefined && book.position !== null) {
       targetTime = parseFloat(book.position);
     } else if (book.progress && book.progress.position !== undefined && book.progress.position !== null) {
@@ -525,8 +527,8 @@ class PlayerController {
       targetTime = this.getChapterStartTime(book.chapters[chapterIndex]);
     }
 
-    // Fetch freshest progress from backend if not manually passed
-    if (book.id && elapsedBookSeconds === null) {
+    // Fetch freshest progress from backend if not already embedded
+    if (book.id && elapsedBookSeconds === null && book.progressResponse === undefined && book.position === undefined) {
       this.fetchProgress(book.id).then(prog => {
         if (prog && prog.position !== undefined && prog.position !== null) {
           const freshPos = parseFloat(prog.position);
@@ -805,6 +807,20 @@ class PlayerController {
     this.audio.currentTime = 0;
     this.saveProgress(true);
     this.updateUI();
+  }
+
+  async fetchProgress(audiobookId) {
+    if (!audiobookId) return null;
+    const API_BASE = getApiBase();
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/api/audiobooks/${audiobookId}/progress`, {}, 3000);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (e) {
+      console.warn(`[Aura] Could not fetch progress for book #${audiobookId}:`, e);
+    }
+    return null;
   }
 
   async saveProgress(force = false) {

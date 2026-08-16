@@ -1,9 +1,12 @@
 package com.example.audiobooks.service;
 
+import com.example.audiobooks.dto.AudiobookProgressResponse;
+import com.example.audiobooks.dto.AudiobookResponse;
 import com.example.audiobooks.entity.Audiobook;
-
+import com.example.audiobooks.entity.AudiobookProgress;
 import com.example.audiobooks.parser.M4Bparser;
 import com.example.audiobooks.parser.MP3Parser;
+import com.example.audiobooks.repository.AudiobookProgressRepository;
 import com.example.audiobooks.repository.AudiobookRepository;
 
 import org.springframework.core.io.Resource;
@@ -29,28 +32,60 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-
+import java.lang.foreign.Linker.Option;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 
 @Service
 public class AudiobookService {
 
     private final AudiobookRepository repository;
+    private final AudiobookProgressRepository progressRepository;
     private final M4Bparser parser;
     private final MP3Parser mp3Parser;
     
 
-    public AudiobookService(AudiobookRepository repository, M4Bparser parser, MP3Parser mp3Parser) {
+    public AudiobookService(AudiobookRepository repository, M4Bparser parser, MP3Parser mp3Parser, AudiobookProgressRepository progressRepository) {
         this.repository = repository;
         this.parser = parser;
         this.mp3Parser = mp3Parser;
+        this.progressRepository = progressRepository;
 
     }
 
-    public List<Audiobook> getAllAudiobooks() {
-        return repository.findAll();
+    private AudiobookResponse toAudiobookResponse(Audiobook audiobook) {
+        AudiobookResponse audiobookResponse = new AudiobookResponse();
+
+        audiobookResponse.setId(audiobook.getId());
+        audiobookResponse.setTitle(audiobook.getTitle());
+        audiobookResponse.setAuthor(audiobook.getAuthor());
+        audiobookResponse.setNarrator(audiobook.getNarrator());
+        audiobookResponse.setDuration(audiobook.getDuration());
+        
+        AudiobookProgress audiobookProgress = progressRepository.findByAudiobookId(audiobook.getId()).orElse(null);
+
+        if (audiobookProgress != null) {
+
+            AudiobookProgressResponse progressResponse = new AudiobookProgressResponse();
+
+            progressResponse.setPosition(audiobookProgress.getPosition());
+            progressResponse.setCompleted(audiobookProgress.isCompleted());
+            progressResponse.setUpdatedAt(audiobookProgress.getUpdatedAt());
+
+            audiobookResponse.setProgressResponse(progressResponse);
+        }
+
+        return audiobookResponse;
+
+    }
+
+    public List<AudiobookResponse> getAllAudiobooks() {
+        return repository.findAll()
+            .stream()
+            .map(this::toAudiobookResponse)
+            .toList();
     }
 
     public Audiobook getAudiobookById(Long id) {
