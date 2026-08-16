@@ -1,7 +1,11 @@
 package com.example.audiobooks.controller;
 
+import com.example.audiobooks.dto.AudiobookProgressRequest;
 import com.example.audiobooks.entity.Audiobook;
+import com.example.audiobooks.entity.AudiobookProgress;
 import com.example.audiobooks.service.AudiobookService;
+
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -12,7 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.PostMapping;
-
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -68,5 +72,10 @@ public class AudiobookController {
             @RequestHeader(value = "Range", required = false) String range) throws IOException {
 
         return service.getAudioFile(id, range);
+    }
+
+    @PutMapping("/api/audiobooks/{id}/progress") 
+    public AudiobookProgress updateProgress(@PathVariable Long audiobookId, @RequestBody AudiobookProgressRequest request) {
+        
     }
 }
