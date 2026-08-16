@@ -10,6 +10,8 @@ import com.example.audiobooks.parser.MP3Parser;
 import com.example.audiobooks.repository.AudiobookProgressRepository;
 import com.example.audiobooks.repository.AudiobookRepository;
 
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRange;
@@ -39,6 +41,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class AudiobookService {
 
     private final AudiobookRepository repository;
@@ -46,16 +49,6 @@ public class AudiobookService {
     private final AudiobookMapper audiobookMapper;
     private final M4Bparser parser;
     private final MP3Parser mp3Parser;
-
-    public AudiobookService(AudiobookRepository repository, M4Bparser parser, MP3Parser mp3Parser,
-            AudiobookProgressRepository progressRepository, AudiobookMapper audiobookmapper) {
-        this.repository = repository;
-        this.parser = parser;
-        this.mp3Parser = mp3Parser;
-        this.progressRepository = progressRepository;
-        this.audiobookMapper = audiobookmapper;
-
-    }
 
     // NOT necesarry with the mapper
     // private AudiobookResponse toAudiobookResponse(Audiobook audiobook) {

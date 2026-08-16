@@ -14,18 +14,17 @@ import com.example.audiobooks.entity.EBook;
 import com.example.audiobooks.parser.EpubParser;
 import com.example.audiobooks.repository.EBookRepository;
 
+import lombok.RequiredArgsConstructor;
+
 
 @Service
+@RequiredArgsConstructor
 public class EBookService {
 
 
     private final EpubParser epubParser;
     private final EBookRepository repository;
 
-    public EBookService(EpubParser epubParser, EBookRepository repository) {
-        this.epubParser = epubParser;
-        this.repository = repository;
-    }
 
     public List<EBook> getAllEBooks() {
         return repository.findAll();

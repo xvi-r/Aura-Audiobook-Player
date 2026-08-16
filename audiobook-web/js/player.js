@@ -72,48 +72,40 @@ class PlayerController {
 
     const API_BASE = getApiBase();
 
-    // Find the most recently played book id from localStorage
-    let lastPlayedId = null;
-    let lastPlayedTime = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("aura_last_played_")) {
-        const t = parseInt(localStorage.getItem(key), 10);
-        if (t > lastPlayedTime) {
-          lastPlayedTime = t;
-          lastPlayedId = key.replace("aura_last_played_", "");
+    // 1. Attempt fetching the most recent audiobook from GET /api/audiobooks/recent
+    let initialBook = null;
+    try {
+      const recentResponse = await fetchWithTimeout(`${API_BASE}/api/audiobooks/recent`, {}, 3000);
+      if (recentResponse.ok && recentResponse.status !== 204) {
+        const data = await recentResponse.json();
+        if (data && data.id) {
+          initialBook = data;
         }
       }
-    }
-
-    // Fetch all books from backend (or fall back to local)
-    let allBooks = [];
-    try {
-      const response = await fetchWithTimeout(`${API_BASE}/api/audiobooks`);
-      if (response.ok) allBooks = await response.json();
     } catch (err) {
-      console.warn("Backend offline during player init, using local data.", err);
+      console.warn("[Aura] Could not fetch recent audiobook from backend:", err);
     }
-    if (!allBooks.length) allBooks = AUDIOBOOKS;
 
-    // Pick the last played book, or fall back to the first book
-    let initialBook = null;
-    if (lastPlayedId) {
-      initialBook = allBooks.find(b => String(b.id) === String(lastPlayedId)) || null;
-    }
-    if (!initialBook && allBooks.length > 0) {
-      initialBook = allBooks[0];
+    // 2. Fallback: if no recent book, fetch all books and pick the first one
+    if (!initialBook) {
+      let allBooks = [];
+      try {
+        const response = await fetchWithTimeout(`${API_BASE}/api/audiobooks`);
+        if (response.ok) allBooks = await response.json();
+      } catch (err) {
+        console.warn("Backend offline during player init, using local data.", err);
+      }
+      if (!allBooks.length) allBooks = AUDIOBOOKS;
+      if (allBooks.length > 0) initialBook = allBooks[0];
     }
 
     if (initialBook) {
-      // Fetch full book details (chapters etc.) from backend
-      try {
-        const detailsResponse = await fetchWithTimeout(`${API_BASE}/api/audiobooks/${initialBook.id}`);
-        if (detailsResponse.ok) initialBook = await detailsResponse.json();
-      } catch (err) { /* fallback is fine */ }
+      const startPos = (initialBook.progressResponse && initialBook.progressResponse.position !== undefined && initialBook.progressResponse.position !== null)
+        ? parseFloat(initialBook.progressResponse.position)
+        : (initialBook.position !== undefined && initialBook.position !== null ? parseFloat(initialBook.position) : null);
 
       // Restore at saved position, don't auto-play
-      this.loadBook(initialBook, 0, null, false);
+      this.loadBook(initialBook, 0, startPos, false);
     }
 
     this.updateUI();
