@@ -18,9 +18,11 @@ public class AudiobookProgressService {
     private final AudiobookProgressRepository repository;
     private final AudiobookRepository audiobookRepository;
 
+
     public AudiobookProgressService(AudiobookProgressRepository repository, AudiobookRepository audiobookRepository) {
         this.repository = repository;
         this.audiobookRepository = audiobookRepository;
+
 
     }
 
@@ -78,5 +80,6 @@ public class AudiobookProgressService {
 
         return response;
     }
+
 
 }

@@ -4,6 +4,7 @@ import com.example.audiobooks.dto.AudiobookProgressResponse;
 import com.example.audiobooks.dto.AudiobookResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.entity.AudiobookProgress;
+import com.example.audiobooks.mapper.AudiobookMapper;
 import com.example.audiobooks.parser.M4Bparser;
 import com.example.audiobooks.parser.MP3Parser;
 import com.example.audiobooks.repository.AudiobookProgressRepository;
@@ -37,55 +38,61 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-
 @Service
 public class AudiobookService {
 
     private final AudiobookRepository repository;
     private final AudiobookProgressRepository progressRepository;
+    private final AudiobookMapper audiobookMapper;
     private final M4Bparser parser;
     private final MP3Parser mp3Parser;
-    
 
-    public AudiobookService(AudiobookRepository repository, M4Bparser parser, MP3Parser mp3Parser, AudiobookProgressRepository progressRepository) {
+    public AudiobookService(AudiobookRepository repository, M4Bparser parser, MP3Parser mp3Parser,
+            AudiobookProgressRepository progressRepository, AudiobookMapper audiobookmapper) {
         this.repository = repository;
         this.parser = parser;
         this.mp3Parser = mp3Parser;
         this.progressRepository = progressRepository;
+        this.audiobookMapper = audiobookmapper;
 
     }
 
-    private AudiobookResponse toAudiobookResponse(Audiobook audiobook) {
-        AudiobookResponse audiobookResponse = new AudiobookResponse();
+    // NOT necesarry with the mapper
+    // private AudiobookResponse toAudiobookResponse(Audiobook audiobook) {
+    // AudiobookResponse audiobookResponse = new AudiobookResponse();
 
-        audiobookResponse.setId(audiobook.getId());
-        audiobookResponse.setTitle(audiobook.getTitle());
-        audiobookResponse.setAuthor(audiobook.getAuthor());
-        audiobookResponse.setNarrator(audiobook.getNarrator());
-        audiobookResponse.setDuration(audiobook.getDuration());
-        
-        AudiobookProgress audiobookProgress = progressRepository.findByAudiobookId(audiobook.getId()).orElse(null);
+    // audiobookResponse.setId(audiobook.getId());
+    // audiobookResponse.setTitle(audiobook.getTitle());
+    // audiobookResponse.setAuthor(audiobook.getAuthor());
+    // audiobookResponse.setNarrator(audiobook.getNarrator());
+    // audiobookResponse.setDuration(audiobook.getDuration());
 
-        if (audiobookProgress != null) {
+    // AudiobookProgress audiobookProgress =
+    // progressRepository.findByAudiobookId(audiobook.getId()).orElse(null);
 
-            AudiobookProgressResponse progressResponse = new AudiobookProgressResponse();
+    // if (audiobookProgress != null) {
 
-            progressResponse.setPosition(audiobookProgress.getPosition());
-            progressResponse.setCompleted(audiobookProgress.isCompleted());
-            progressResponse.setUpdatedAt(audiobookProgress.getUpdatedAt());
+    // AudiobookProgressResponse progressResponse = new AudiobookProgressResponse();
 
-            audiobookResponse.setProgressResponse(progressResponse);
-        }
+    // progressResponse.setPosition(audiobookProgress.getPosition());
+    // progressResponse.setCompleted(audiobookProgress.isCompleted());
+    // progressResponse.setUpdatedAt(audiobookProgress.getUpdatedAt());
 
-        return audiobookResponse;
+    // audiobookResponse.setProgressResponse(progressResponse);
+    // }
 
-    }
+    // return audiobookResponse;
+
+    // }
 
     public List<AudiobookResponse> getAllAudiobooks() {
         return repository.findAll()
-            .stream()
-            .map(this::toAudiobookResponse)
-            .toList();
+                .stream()
+                .map(audiobook -> { 
+                    AudiobookProgress audiobookProgress = progressRepository.findByAudiobookId(audiobook.getId()).orElse(null);
+                    return audiobookMapper.toResponse(audiobook, audiobookProgress);
+                })
+                .toList();
     }
 
     public Audiobook getAudiobookById(Long id) {
@@ -194,119 +201,110 @@ public class AudiobookService {
         return coverFile;
     }
 
-public ResponseEntity<Resource> getAudioFile(Long id, String range)
-        throws IOException {
+    public ResponseEntity<Resource> getAudioFile(Long id, String range)
+            throws IOException {
 
-    Audiobook audiobook = getAudiobookById(id);
+        Audiobook audiobook = getAudiobookById(id);
 
-    Path path = Paths.get(audiobook.getFilePath());
+        Path path = Paths.get(audiobook.getFilePath());
 
-    if (!Files.exists(path) || !Files.isRegularFile(path)) {
-        throw new FileNotFoundException(
-                "Audio file not found: " + path.toAbsolutePath()
-        );
-    }
+        if (!Files.exists(path) || !Files.isRegularFile(path)) {
+            throw new FileNotFoundException(
+                    "Audio file not found: " + path.toAbsolutePath());
+        }
 
-    long fileLength = Files.size(path);
+        long fileLength = Files.size(path);
 
-    // No Range header: return the entire file
-    if (range == null) {
+        // No Range header: return the entire file
+        if (range == null) {
 
-        Resource resource = new FileSystemResource(path);
+            Resource resource = new FileSystemResource(path);
 
-        return ResponseEntity.ok()
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("audio/mp4"))
+                    .contentLength(fileLength)
+                    .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                    .body(resource);
+        }
+
+        // Parse: bytes=1000000-1999999
+        HttpRange httpRange = HttpRange.parseRanges(range).get(0);
+
+        long start = httpRange.getRangeStart(fileLength);
+        long end = httpRange.getRangeEnd(fileLength);
+
+        // Validate range
+        if (start < 0 || start >= fileLength || end < start) {
+            return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                    .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileLength)
+                    .build();
+        }
+
+        long contentLength = end - start + 1;
+
+        InputStream inputStream = Files.newInputStream(path);
+
+        // Move the stream to the requested starting byte
+        inputStream.skipNBytes(start);
+
+        InputStream limitedStream = new InputStream() {
+
+            private long remaining = contentLength;
+
+            @Override
+            public int read() throws IOException {
+
+                if (remaining <= 0) {
+                    return -1;
+                }
+
+                int value = inputStream.read();
+
+                if (value != -1) {
+                    remaining--;
+                }
+
+                return value;
+            }
+
+            @Override
+            public int read(byte[] buffer, int offset, int length)
+                    throws IOException {
+
+                if (remaining <= 0) {
+                    return -1;
+                }
+
+                int bytesToRead = (int) Math.min(length, remaining);
+
+                int bytesRead = inputStream.read(
+                        buffer,
+                        offset,
+                        bytesToRead);
+
+                if (bytesRead > 0) {
+                    remaining -= bytesRead;
+                }
+
+                return bytesRead;
+            }
+
+            @Override
+            public void close() throws IOException {
+                inputStream.close();
+            }
+        };
+
+        Resource resource = new InputStreamResource(limitedStream);
+
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
                 .contentType(MediaType.parseMediaType("audio/mp4"))
-                .contentLength(fileLength)
+                .contentLength(contentLength)
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                .header(
+                        HttpHeaders.CONTENT_RANGE,
+                        "bytes " + start + "-" + end + "/" + fileLength)
                 .body(resource);
     }
 
-    // Parse: bytes=1000000-1999999
-    HttpRange httpRange = HttpRange.parseRanges(range).get(0);
-
-    long start = httpRange.getRangeStart(fileLength);
-    long end = httpRange.getRangeEnd(fileLength);
-
-    // Validate range
-    if (start < 0 || start >= fileLength || end < start) {
-        return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
-                .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileLength)
-                .build();
-    }
-
-    long contentLength = end - start + 1;
-
-    InputStream inputStream = Files.newInputStream(path);
-
-    // Move the stream to the requested starting byte
-    inputStream.skipNBytes(start);
-
-    InputStream limitedStream = new InputStream() {
-
-        private long remaining = contentLength;
-
-        @Override
-        public int read() throws IOException {
-
-            if (remaining <= 0) {
-                return -1;
-            }
-
-            int value = inputStream.read();
-
-            if (value != -1) {
-                remaining--;
-            }
-
-            return value;
-        }
-
-        @Override
-        public int read(byte[] buffer, int offset, int length)
-                throws IOException {
-
-            if (remaining <= 0) {
-                return -1;
-            }
-
-            int bytesToRead = (int) Math.min(length, remaining);
-
-            int bytesRead = inputStream.read(
-                    buffer,
-                    offset,
-                    bytesToRead
-            );
-
-            if (bytesRead > 0) {
-                remaining -= bytesRead;
-            }
-
-            return bytesRead;
-        }
-
-        @Override
-        public void close() throws IOException {
-            inputStream.close();
-        }
-    };
-
-    Resource resource = new InputStreamResource(limitedStream);
-
-    return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-            .contentType(MediaType.parseMediaType("audio/mp4"))
-            .contentLength(contentLength)
-            .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-            .header(
-                    HttpHeaders.CONTENT_RANGE,
-                    "bytes " + start + "-" + end + "/" + fileLength
-            )
-            .body(resource);
 }
-
-
-
-
-
-
-}
-

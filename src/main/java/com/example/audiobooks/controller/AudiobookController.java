@@ -89,4 +89,10 @@ public class AudiobookController {
     public AudiobookProgressResponse getProgress(@PathVariable Long audiobookId) {
         return progressService.getProgressForAudiobook(audiobookId);
     }
+
+    //this is used so the frontend knows what book to load in the playbar and visually
+    // @GetMapping("/api/audiobooks/recent") 
+    // public AudiobookResponse getMostRecentAudiobook() {
+        
+    // }
 }
