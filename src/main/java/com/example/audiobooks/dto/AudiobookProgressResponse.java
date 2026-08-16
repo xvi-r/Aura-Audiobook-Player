@@ -1,14 +1,15 @@
 package com.example.audiobooks.dto;
 
+import java.time.Instant;
+
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class AudiobookProgressRequest {
+public class AudiobookProgressResponse {
 
     private double position;
     private boolean completed;
-
-    
+    private Instant updatedAt;
 }

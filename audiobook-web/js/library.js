@@ -65,10 +65,8 @@ export async function renderLibrary(searchQuery = "") {
         if (overrides.genres && Array.isArray(overrides.genres) && (!b.genres || b.genres.length === 0)) b.genres = overrides.genres;
       } catch (e) {}
     }
-    const saved = localStorage.getItem(`aura_progress_${b.id}`);
-    b.progressSeconds = saved !== null ? parseFloat(saved) : 0;
-    const savedLastPlayed = localStorage.getItem(`aura_last_played_${b.id}`);
-    b.lastPlayedTimestamp = savedLastPlayed !== null ? parseInt(savedLastPlayed) : 0;
+    b.progressSeconds = b.position ?? b.progressSeconds ?? 0;
+    b.lastPlayedTimestamp = b.lastPlayedTimestamp || 0;
     b.runtimeSeconds = b.duration || 0;
 
     // Cover image calculation

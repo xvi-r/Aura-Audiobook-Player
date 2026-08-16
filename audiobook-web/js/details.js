@@ -47,8 +47,7 @@ export async function renderDetails(bookId) {
   );
 
   // Map API entities to UI expectations
-  const saved = localStorage.getItem(`aura_progress_${book.id}`);
-  book.progressSeconds = saved !== null ? parseFloat(saved) : 0;
+  book.progressSeconds = book.position ?? book.progressSeconds ?? 0;
   
   const savedMeta = localStorage.getItem(`aura_meta_${book.id}`);
   let customCover = null;
@@ -500,8 +499,20 @@ function setupDetailsEvents(book, container) {
   // Reset Progress Button
   const resetBtn = document.getElementById("details-reset-btn");
   if (resetBtn) {
-    resetBtn.addEventListener("click", () => {
+    resetBtn.addEventListener("click", async () => {
       book.progressSeconds = 0;
+      book.position = 0;
+      book.completed = false;
+      const API_BASE = getApiBase();
+      try {
+        await fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}/progress`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ position: 0, completed: false })
+        }, 4000);
+      } catch (err) {
+        console.warn("Backend reset progress notice:", err);
+      }
       const isLoadedInPlayer = player.currentBook && String(player.currentBook.id) === String(book.id);
       if (isLoadedInPlayer) {
         player.loadBook(book, 0, 0);

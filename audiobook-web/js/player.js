@@ -481,7 +481,14 @@ class PlayerController {
   }
 
   loadBook(book, chapterIndex = 0, elapsedBookSeconds = null, autoPlay = true, shouldNavigate = false) {
+    if (this.currentBook && this.currentBook.id && String(this.currentBook.id) !== String(book.id)) {
+      if (this.audio && !isNaN(this.audio.currentTime) && this.audio.currentTime > 0) {
+        this.saveProgress(true);
+      }
+    }
+
     this.currentBook = book;
+    this.lastBackendSyncTime = Date.now();
 
     if (this.currentBook && this.currentBook.id) {
       const savedMeta = localStorage.getItem(`aura_meta_${this.currentBook.id}`);
@@ -504,17 +511,40 @@ class PlayerController {
       nowPlayingItem.style.display = "block";
     }
 
-    // Determine target seek time
+    // Determine target seek time (Check position, progress.position, progressSeconds)
     let targetTime = 0;
     if (elapsedBookSeconds !== null && elapsedBookSeconds !== undefined) {
       targetTime = elapsedBookSeconds;
-    } else {
-      const savedProgress = localStorage.getItem(`aura_progress_${book.id}`);
-      if (savedProgress !== null) {
-        targetTime = parseFloat(savedProgress);
-      } else if (book.chapters && book.chapters[chapterIndex]) {
-        targetTime = this.getChapterStartTime(book.chapters[chapterIndex]);
-      }
+    } else if (book.position !== undefined && book.position !== null) {
+      targetTime = parseFloat(book.position);
+    } else if (book.progress && book.progress.position !== undefined && book.progress.position !== null) {
+      targetTime = parseFloat(book.progress.position);
+    } else if (book.progressSeconds !== undefined && book.progressSeconds !== null) {
+      targetTime = parseFloat(book.progressSeconds);
+    } else if (book.chapters && book.chapters[chapterIndex]) {
+      targetTime = this.getChapterStartTime(book.chapters[chapterIndex]);
+    }
+
+    // Fetch freshest progress from backend if not manually passed
+    if (book.id && elapsedBookSeconds === null) {
+      this.fetchProgress(book.id).then(prog => {
+        if (prog && prog.position !== undefined && prog.position !== null) {
+          const freshPos = parseFloat(prog.position);
+          if (!isNaN(freshPos) && freshPos >= 0) {
+            book.position = freshPos;
+            book.progressSeconds = freshPos;
+            book.completed = prog.completed;
+            if (this.currentBook && String(this.currentBook.id) === String(book.id)) {
+              if (Math.abs((this.audio.currentTime || 0) - freshPos) > 2) {
+                try {
+                  this.audio.currentTime = freshPos;
+                  this.updatePlaybackProgressUI();
+                } catch (err) {}
+              }
+            }
+          }
+        }
+      });
     }
 
     this.currentChapterIndex = chapterIndex;
@@ -554,7 +584,6 @@ class PlayerController {
       this.updateUI();
       this.notifyTrackChange();
       this.notifyTimeUpdate();
-      this.saveProgress(true);
     };
 
     if (needsNewSource) {
@@ -778,19 +807,51 @@ class PlayerController {
     this.updateUI();
   }
 
-  saveProgress(force = false) {
-    if (!this.currentBook) return;
-    const progress = this.audio.currentTime;
+  async saveProgress(force = false) {
+    if (!this.currentBook || !this.currentBook.id) return;
+    if (this.isUserSeeking) return;
+
+    const currentTime = this.audio.currentTime;
+    if (currentTime === undefined || currentTime === null || isNaN(currentTime)) return;
+
+    // Guard: Prevent zeroing progress on initial audio buffer timeupdate events
+    if (!force && currentTime < 0.5 && !this.isPlaying) return;
+
+    const duration = this.audio.duration || this.currentBook.duration || 1;
+    const isCompleted = this.audio.ended || (currentTime >= Math.max(1, duration - 5));
     
-    // Update local representation
-    this.currentBook.progressSeconds = progress;
+    // Position strictly in SECONDS (e.g. 1540.5)
+    const positionInSeconds = parseFloat(currentTime.toFixed(1));
+
+    // Update in-memory representation
+    this.currentBook.progressSeconds = positionInSeconds;
+    this.currentBook.position = positionInSeconds;
+    this.currentBook.completed = isCompleted;
 
     const now = Date.now();
-    // Throttle localStorage updates to once every 2 seconds, unless forced
-    if (force || now - this.lastSyncTime > 2000) {
-      this.lastSyncTime = now;
-      localStorage.setItem(`aura_progress_${this.currentBook.id}`, progress.toString());
-      localStorage.setItem(`aura_last_played_${this.currentBook.id}`, now.toString());
+    
+    // Periodic sync: only sync every 12 seconds WHILE PLAYING
+    // Immediate sync (force = true): on pause, seek, ended, or book change
+    if (!force && (!this.isPlaying || now - this.lastBackendSyncTime < 12000)) {
+      return;
+    }
+
+    this.lastBackendSyncTime = now;
+    const API_BASE = getApiBase();
+    const payload = {
+      position: positionInSeconds,
+      completed: isCompleted
+    };
+
+    try {
+      console.log(`[Aura] Syncing progress in SECONDS: PUT /api/audiobooks/${this.currentBook.id}/progress`, payload);
+      await fetchWithTimeout(`${API_BASE}/api/audiobooks/${this.currentBook.id}/progress`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }, 4000);
+    } catch (err) {
+      console.warn("[Aura] Backend progress sync notice:", err);
     }
   }
 

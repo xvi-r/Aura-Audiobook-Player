@@ -1,11 +1,11 @@
 package com.example.audiobooks.controller;
 
 import com.example.audiobooks.dto.AudiobookProgressRequest;
+import com.example.audiobooks.dto.AudiobookProgressResponse;
 import com.example.audiobooks.entity.Audiobook;
-import com.example.audiobooks.entity.AudiobookProgress;
+import com.example.audiobooks.service.AudiobookProgressService;
 import com.example.audiobooks.service.AudiobookService;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.io.IOException;
 import java.util.List;
@@ -28,9 +29,12 @@ import java.util.List;
 public class AudiobookController {
 
     private final AudiobookService service;
+    private final AudiobookProgressService progressService;
 
-    public AudiobookController(AudiobookService service) {
+    public AudiobookController(AudiobookService service, AudiobookProgressService progressService) {
         this.service = service;
+        this.progressService = progressService;
+
     }
 
     @GetMapping("/api/audiobooks")
@@ -74,8 +78,9 @@ public class AudiobookController {
         return service.getAudioFile(id, range);
     }
 
-    @PutMapping("/api/audiobooks/{id}/progress") 
-    public AudiobookProgress updateProgress(@PathVariable Long audiobookId, @RequestBody AudiobookProgressRequest request) {
-        
+    @PutMapping("/api/audiobooks/{audiobookId}/progress") 
+    public AudiobookProgressResponse updateProgress(@PathVariable Long audiobookId, @RequestBody AudiobookProgressRequest request) {
+        return progressService.updateProgress(audiobookId, request);
+
     }
 }

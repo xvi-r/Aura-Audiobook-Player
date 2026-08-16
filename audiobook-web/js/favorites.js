@@ -38,8 +38,7 @@ export const renderFavorites = async () => {
   };
 
   allBooks.forEach(b => {
-    const saved = localStorage.getItem(`aura_progress_${b.id}`);
-    b.progressSeconds = saved !== null ? parseFloat(saved) : 0;
+    b.progressSeconds = b.position ?? b.progressSeconds ?? 0;
     let customCover = null;
     if (b.id) {
       try {
