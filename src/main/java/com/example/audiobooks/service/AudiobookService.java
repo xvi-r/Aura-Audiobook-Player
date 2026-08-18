@@ -35,10 +35,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.foreign.Linker.Option;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -50,33 +48,6 @@ public class AudiobookService {
     private final M4Bparser parser;
     private final MP3Parser mp3Parser;
 
-    // NOT necesarry with the mapper
-    // private AudiobookResponse toAudiobookResponse(Audiobook audiobook) {
-    // AudiobookResponse audiobookResponse = new AudiobookResponse();
-
-    // audiobookResponse.setId(audiobook.getId());
-    // audiobookResponse.setTitle(audiobook.getTitle());
-    // audiobookResponse.setAuthor(audiobook.getAuthor());
-    // audiobookResponse.setNarrator(audiobook.getNarrator());
-    // audiobookResponse.setDuration(audiobook.getDuration());
-
-    // AudiobookProgress audiobookProgress =
-    // progressRepository.findByAudiobookId(audiobook.getId()).orElse(null);
-
-    // if (audiobookProgress != null) {
-
-    // AudiobookProgressResponse progressResponse = new AudiobookProgressResponse();
-
-    // progressResponse.setPosition(audiobookProgress.getPosition());
-    // progressResponse.setCompleted(audiobookProgress.isCompleted());
-    // progressResponse.setUpdatedAt(audiobookProgress.getUpdatedAt());
-
-    // audiobookResponse.setProgressResponse(progressResponse);
-    // }
-
-    // return audiobookResponse;
-
-    // }
 
     public List<AudiobookResponse> getAllAudiobooks() {
         return repository.findAll()
