@@ -22,7 +22,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     
 
-    public UserRegisterResponse Register(UserRegisterRequest request) {
+    public UserRegisterResponse registerUser(UserRegisterRequest request) {
         if( userRepository.existsByUsername(request.getUsername())) {
             //Custom exception here so we can specfically deal with it later 
             throw new UserNameAlreadyExistsException("Username Already Exists");
