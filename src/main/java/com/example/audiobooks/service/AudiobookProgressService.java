@@ -4,9 +4,9 @@ import java.time.Instant;
 
 import org.springframework.stereotype.Service;
 
-import com.example.audiobooks.dto.AudiobookProgressRequest;
-import com.example.audiobooks.dto.AudiobookProgressResponse;
-import com.example.audiobooks.dto.AudiobookResponse;
+import com.example.audiobooks.dto.audiobook.AudiobookResponse;
+import com.example.audiobooks.dto.userAudiobook.AudiobookProgressRequest;
+import com.example.audiobooks.dto.userAudiobook.AudiobookProgressResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.entity.AudiobookProgress;
 import com.example.audiobooks.mapper.AudiobookMapper;

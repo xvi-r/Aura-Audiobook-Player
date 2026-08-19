@@ -1,7 +1,6 @@
 package com.example.audiobooks.service;
 
-import com.example.audiobooks.dto.AudiobookProgressResponse;
-import com.example.audiobooks.dto.AudiobookResponse;
+import com.example.audiobooks.dto.audiobook.AudiobookResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.entity.AudiobookProgress;
 import com.example.audiobooks.mapper.AudiobookMapper;

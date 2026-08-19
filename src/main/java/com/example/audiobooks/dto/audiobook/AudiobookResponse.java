@@ -1,4 +1,6 @@
-package com.example.audiobooks.dto;
+package com.example.audiobooks.dto.audiobook;
+
+import com.example.audiobooks.dto.userAudiobook.AudiobookProgressResponse;
 
 import lombok.Getter;
 import lombok.Setter;

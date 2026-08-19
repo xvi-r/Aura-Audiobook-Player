@@ -2,8 +2,8 @@ package com.example.audiobooks.mapper;
 
 import org.springframework.stereotype.Component;
 
-import com.example.audiobooks.dto.AudiobookProgressResponse;
-import com.example.audiobooks.dto.AudiobookResponse;
+import com.example.audiobooks.dto.audiobook.AudiobookResponse;
+import com.example.audiobooks.dto.userAudiobook.AudiobookProgressResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.entity.AudiobookProgress;
 

@@ -1,4 +1,4 @@
-package com.example.audiobooks.dto;
+package com.example.audiobooks.dto.userAudiobook;
 
 import java.time.Instant;
 
