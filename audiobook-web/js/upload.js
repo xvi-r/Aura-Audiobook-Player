@@ -149,6 +149,7 @@ const setupUploadListeners = () => {
     const uploadAudioFile = (file) => {
       const API_BASE = getApiBase();
       const xhr = new XMLHttpRequest();
+      xhr.withCredentials = true;
       const formData = new FormData();
       formData.append("file", file);
 

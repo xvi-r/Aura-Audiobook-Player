@@ -1090,11 +1090,11 @@ export function openEditModal(book, onSaved) {
     // Try sending PUT to backend if endpoint exists
     try {
       const API_BASE = getApiBase();
-      fetch(`${API_BASE}/api/audiobooks/${book.id}`, {
+      fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated)
-      }).catch(() => {});
+      }, 5000).catch(() => {});
     } catch (err) {}
 
     closeModal();

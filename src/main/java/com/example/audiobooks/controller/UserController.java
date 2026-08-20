@@ -9,6 +9,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.audiobooks.dto.user.UserLoginRequest;
@@ -21,8 +22,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
-@CrossOrigin(origins = "*")
-@RestController("/api/users")
+//@CrossOrigin(origins = "*")
+@RestController
+@RequestMapping("/api/users")
 @RequiredArgsConstructor
 
 public class UserController {
@@ -44,8 +46,8 @@ public class UserController {
             HttpServletResponse httpResponse) {
 
         // httpRequest represents the incoming request.
-        // The HTTP session infrastructure uses it to resolve the associated http session (via use of the Jsession id in the cookie)
-        
+        // The HTTP session infrastructure uses it to resolve the associated http
+        // session (via use of the Jsession id in the cookie)
 
         Authentication authentication = userService.login(request);
 
@@ -54,12 +56,14 @@ public class UserController {
         context.setAuthentication(authentication);
 
         SecurityContextHolder.setContext(context);
-        
 
-        // Save the SecurityContext in the HttpSession associated with this request. The HTTP session infrastructure handles
+        // Save the SecurityContext in the HttpSession associated with this request. The
+        // HTTP session infrastructure handles
         // the Jsession id -> httpsession lookup
 
-        // Later when an authenticated request comes in Spring Security can load this securityContext from the session and make it available through the SecurityContextHolder.
+        // Later when an authenticated request comes in Spring Security can load this
+        // securityContext from the session and make it available through the
+        // SecurityContextHolder.
         securityContextRepository.saveContext(
                 context,
                 httpRequest,

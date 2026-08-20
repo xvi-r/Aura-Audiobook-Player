@@ -28,7 +28,7 @@ export const renderCollections = async (activeCollectionName = null) => {
   // Fetch all books to derive Auto Genre collections
   let allBooks = [];
   try {
-    const response = await fetch(`${API_BASE}/api/audiobooks`);
+    const response = await fetchWithTimeout(`${API_BASE}/api/audiobooks`);
     if (response.ok) {
       const data = await response.json();
       if (Array.isArray(data)) {

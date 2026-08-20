@@ -15,6 +15,7 @@ export async function uploadEpubFile(bookId, file) {
 
   const response = await fetch(url, {
     method: "POST",
+    credentials: "include",
     body: formData
   });
 
@@ -43,7 +44,7 @@ export async function fetchEpubBuffer(bookOrId) {
 
   let targetEbookId = rawId;
   try {
-    const listRes = await fetch(`${apiBase}/api/Ebooks`);
+    const listRes = await fetch(`${apiBase}/api/Ebooks`, { credentials: "include" });
     if (listRes.ok) {
       const listData = await listRes.json();
       if (Array.isArray(listData)) {
@@ -65,7 +66,7 @@ export async function fetchEpubBuffer(bookOrId) {
 
   for (const url of endpoints) {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { credentials: "include" });
       if (res.ok) {
         const contentType = (res.headers.get("content-type") || "").toLowerCase();
         if (!contentType.includes("json") && !contentType.includes("html")) {
@@ -90,7 +91,7 @@ export async function checkEpubExists(bookId) {
   const checkUrl = `${apiBase}/api/epub/${bookId}`;
 
   try {
-    const response = await fetch(checkUrl, { method: "GET" });
+    const response = await fetch(checkUrl, { method: "GET", credentials: "include" });
     if (response.ok) {
       const contentType = (response.headers.get("content-type") || "").toLowerCase();
       // Ensure it returned binary or non-JSON/non-HTML text

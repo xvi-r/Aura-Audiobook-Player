@@ -19,7 +19,7 @@ class PlayerController {
 
     // HTML5 Audio Engine
     this.audio = new Audio();
-    this.audio.crossOrigin = "anonymous";
+    this.audio.crossOrigin = "use-credentials";
     this.audio.preload = "auto";
     this.timerId = null;
     this.sleepTimerId = null;

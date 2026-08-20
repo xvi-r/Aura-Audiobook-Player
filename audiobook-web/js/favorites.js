@@ -14,7 +14,7 @@ export const renderFavorites = async () => {
   // Fetch books
   let allBooks = [];
   try {
-    const response = await fetch(`${API_BASE}/api/audiobooks`);
+    const response = await fetchWithTimeout(`${API_BASE}/api/audiobooks`);
     if (response.ok) {
       const data = await response.json();
       if (Array.isArray(data)) {

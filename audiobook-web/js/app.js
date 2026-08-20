@@ -9,6 +9,7 @@ import { renderFavorites } from "./favorites.js";
 import { renderEqualizer } from "./equalizer.js";
 import { renderSettings } from "./settings.js";
 import { renderUpload } from "./upload.js";
+import { renderAuthView, updateAuthSidebarUI } from "./auth.js";
 
 const applyThemeAndAccent = () => {
   const baseTheme = localStorage.getItem("aura_base_theme") || "base-midnight";
@@ -197,6 +198,23 @@ const initApp = () => {
     updateActiveSidebar("#now-playing");
     syncBottomPlayerBar(true); // Hide bottom player when viewing Now Playing
   });
+
+  router.addRoute("#login", () => {
+    cleanupPreviousView();
+    renderAuthView("login");
+    updateActiveSidebar("#login");
+    syncBottomPlayerBar(false);
+  });
+
+  router.addRoute("#register", () => {
+    cleanupPreviousView();
+    renderAuthView("register");
+    updateActiveSidebar("#register");
+    syncBottomPlayerBar(false);
+  });
+
+  // Update Auth State in Sidebar
+  updateAuthSidebarUI();
 
   // 3. Initialize Router
   router.init();

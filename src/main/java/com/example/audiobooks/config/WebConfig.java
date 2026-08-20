@@ -25,6 +25,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins("http://127.0.0.1:8000")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
+                .allowCredentials(true)
                 .exposedHeaders(
                         "Content-Range",
                         "Accept-Ranges",

@@ -22,7 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.audiobooks.entity.EBook;
 import com.example.audiobooks.service.EBookService;
 
-@CrossOrigin(origins = "*")
+//@CrossOrigin(origins = "*")
 @RestController
 public class EBookController {
     
