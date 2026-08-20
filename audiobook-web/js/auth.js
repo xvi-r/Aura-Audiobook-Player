@@ -77,75 +77,102 @@ export function renderAuthView(activeTab = "login") {
   const isLogin = activeTab === "login";
 
   container.innerHTML = `
-    <div class="auth-view-container">
-      <div class="auth-header">
-        <h1 class="auth-title">${isLogin ? "Welcome Back" : "Create Account"}</h1>
-        <p class="auth-subtitle">${isLogin ? "Sign in to sync your audiobook collection & progress." : "Register to start building your personal audiobook library."}</p>
+    <header class="library-header" style="margin-bottom: 24px;">
+      <div class="library-header-left">
+        <h1 class="library-title">${isLogin ? "Sign In" : "Register"}</h1>
+        <p class="library-subtitle">${isLogin ? "Sign in to sync your audiobook collection & playback progress." : "Create an account on your personal audiobook server."}</p>
       </div>
+    </header>
 
-      <div class="auth-tabs">
-        <button class="auth-tab-btn ${isLogin ? 'active' : ''}" id="tab-auth-login">Sign In</button>
-        <button class="auth-tab-btn ${!isLogin ? 'active' : ''}" id="tab-auth-register">Register</button>
-      </div>
-
-      <div id="auth-alert-container"></div>
-
-      <form class="auth-form" id="auth-form" autocomplete="on">
-        <div class="auth-field-group">
-          <label class="auth-label" for="auth-username-input">Username</label>
-          <div class="auth-input-wrapper">
-            <i data-lucide="user" class="auth-input-icon"></i>
-            <input 
-              type="text" 
-              id="auth-username-input" 
-              class="auth-input" 
-              placeholder="Enter your username" 
-              required 
-              autocomplete="username"
-            />
+    <div class="auth-view-wrapper">
+      <div class="auth-card">
+        <div class="auth-card-header">
+          <div class="auth-badge-icon">
+            <i data-lucide="${isLogin ? 'key-round' : 'user-plus'}"></i>
           </div>
+          <h2 class="auth-card-title">${isLogin ? "Welcome Back" : "Create Account"}</h2>
+          <p class="auth-card-subtitle">${isLogin ? "Enter your credentials to access your audiobooks." : "Fill out your username and password to get started."}</p>
         </div>
 
-        <div class="auth-field-group">
-          <label class="auth-label" for="auth-password-input">Password</label>
-          <div class="auth-input-wrapper">
-            <i data-lucide="lock" class="auth-input-icon"></i>
-            <input 
-              type="password" 
-              id="auth-password-input" 
-              class="auth-input" 
-              placeholder="${isLogin ? 'Enter your password' : 'Create a password'}" 
-              required 
-              autocomplete="${isLogin ? 'current-password' : 'new-password'}"
-            />
-            <button type="button" class="auth-toggle-pwd" id="auth-toggle-pwd" title="Toggle password visibility">
-              <i data-lucide="eye" id="pwd-eye-icon"></i>
-            </button>
-          </div>
+        <div class="auth-nav-tabs">
+          <button class="auth-tab-btn ${isLogin ? 'active' : ''}" id="tab-auth-login">
+            <i data-lucide="log-in"></i>
+            <span>Sign In</span>
+          </button>
+          <button class="auth-tab-btn ${!isLogin ? 'active' : ''}" id="tab-auth-register">
+            <i data-lucide="user-plus"></i>
+            <span>Register</span>
+          </button>
         </div>
 
-        ${!isLogin ? `
+        <div id="auth-alert-container"></div>
+
+        <form class="auth-form" id="auth-form" autocomplete="on">
           <div class="auth-field-group">
-            <label class="auth-label" for="auth-confirm-password-input">Confirm Password</label>
+            <label class="auth-label" for="auth-username-input">
+              <i data-lucide="user" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+              Username
+            </label>
+            <div class="auth-input-wrapper">
+              <i data-lucide="user" class="auth-input-icon"></i>
+              <input 
+                type="text" 
+                id="auth-username-input" 
+                class="auth-input" 
+                placeholder="Enter your username" 
+                required 
+                autocomplete="username"
+              />
+            </div>
+          </div>
+
+          <div class="auth-field-group">
+            <label class="auth-label" for="auth-password-input">
+              <i data-lucide="lock" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+              Password
+            </label>
             <div class="auth-input-wrapper">
               <i data-lucide="lock" class="auth-input-icon"></i>
               <input 
                 type="password" 
-                id="auth-confirm-password-input" 
+                id="auth-password-input" 
                 class="auth-input" 
-                placeholder="Confirm your password" 
+                placeholder="${isLogin ? 'Enter your password' : 'Create a password'}" 
                 required 
-                autocomplete="new-password"
+                autocomplete="${isLogin ? 'current-password' : 'new-password'}"
               />
+              <button type="button" class="auth-toggle-pwd" id="auth-toggle-pwd" title="Toggle password visibility">
+                <i data-lucide="eye" id="pwd-eye-icon"></i>
+              </button>
             </div>
           </div>
-        ` : ''}
 
-        <button type="submit" class="auth-submit-btn" id="auth-submit-btn">
-          <i data-lucide="${isLogin ? 'log-in' : 'user-plus'}"></i>
-          <span>${isLogin ? 'Sign In' : 'Create Account'}</span>
-        </button>
-      </form>
+          ${!isLogin ? `
+            <div class="auth-field-group">
+              <label class="auth-label" for="auth-confirm-password-input">
+                <i data-lucide="shield-check" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+                Confirm Password
+              </label>
+              <div class="auth-input-wrapper">
+                <i data-lucide="shield-check" class="auth-input-icon"></i>
+                <input 
+                  type="password" 
+                  id="auth-confirm-password-input" 
+                  class="auth-input" 
+                  placeholder="Confirm your password" 
+                  required 
+                  autocomplete="new-password"
+                />
+              </div>
+            </div>
+          ` : ''}
+
+          <button type="submit" class="auth-submit-btn" id="auth-submit-btn">
+            <i data-lucide="${isLogin ? 'log-in' : 'user-plus'}"></i>
+            <span>${isLogin ? 'Sign In' : 'Create Account'}</span>
+          </button>
+        </form>
+      </div>
     </div>
   `;
 
@@ -217,7 +244,6 @@ export function renderAuthView(activeTab = "login") {
       try {
         if (isLogin) {
           console.log("[Aura Auth] Sending POST request to /api/users/login:", payload);
-          // Attempt Login POST /api/users/login
           const response = await fetchWithTimeout(`${API_BASE}/api/users/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -238,7 +264,6 @@ export function renderAuthView(activeTab = "login") {
           }
         } else {
           console.log("[Aura Auth] Sending POST request to /api/users/register:", payload);
-          // Attempt Register POST /api/users/register
           const response = await fetchWithTimeout(`${API_BASE}/api/users/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

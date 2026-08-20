@@ -70,7 +70,6 @@ public class AudiobookController {
                 .body(cover);
     }
 
-    @CrossOrigin(origins = "*")
     @GetMapping(value = "/api/audiobooks/{id}/file", produces = "application/epub+zip")
     public ResponseEntity<Resource> getAudioFile(
             @PathVariable Long id,
