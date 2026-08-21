@@ -5,6 +5,7 @@ import java.util.List;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -40,6 +41,10 @@ public class Audiobook {
     private String filePath;
 
     private String coverPath;
+
+    //creates a separate table
+    @ElementCollection
+    private List<String> genres = new ArrayList<>();
 
     @Column(columnDefinition = "TEXT")
     private String description;

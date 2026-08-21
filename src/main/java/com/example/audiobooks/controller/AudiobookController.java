@@ -3,14 +3,19 @@ package com.example.audiobooks.controller;
 import com.example.audiobooks.dto.audiobook.AudiobookResponse;
 import com.example.audiobooks.dto.userAudiobook.AudiobookProgressRequest;
 import com.example.audiobooks.dto.userAudiobook.AudiobookProgressResponse;
+import com.example.audiobooks.dto.userAudiobook.UserAudiobookResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.service.AudiobookProgressService;
 import com.example.audiobooks.service.AudiobookService;
+import com.example.audiobooks.service.UserAudiobookService;
 
+import lombok.RequiredArgsConstructor;
 
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,21 +31,19 @@ import java.util.List;
 
 //@CrossOrigin(origins = "*")
 @RestController
+@RequiredArgsConstructor
 public class AudiobookController {
 
     private final AudiobookService service;
     private final AudiobookProgressService progressService;
+    private final UserAudiobookService userAudiobookService;
 
-    public AudiobookController(AudiobookService service, AudiobookProgressService progressService) {
-        this.service = service;
-        this.progressService = progressService;
 
-    }
 
-    @GetMapping("audiobook/getUserAudiobooks")
-    public List<UserAudiobookResponse> getUsersAudiobooks() {
-        
-    }
+    // @GetMapping("audiobook/getUserAudiobooks")
+    // public List<UserAudiobookResponse> getUserAudiobooks(@AuthenticationPrincipal UserDetails user) {
+    //     return userAudiobookService.getUserAudiobooks(user.getUsername());
+    // }
 
 
     @GetMapping("/api/audiobooks")
