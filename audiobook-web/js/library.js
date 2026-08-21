@@ -17,10 +17,14 @@ export async function renderLibrary(searchQuery = "") {
   const query = searchQuery.trim().toLowerCase();
   
   let books = [];
-  const endpointUrl = `${API_BASE}/api/audiobooks`;
+  const userEndpointUrl = `${API_BASE}/api/audiobook/getUserAudiobooks`;
+  const fallbackEndpointUrl = `${API_BASE}/api/audiobooks`;
 
   try {
-    let response = await fetchWithTimeout(endpointUrl, {}, 6000);
+    let response = await fetchWithTimeout(userEndpointUrl, {}, 6000);
+    if (!response.ok) {
+      response = await fetchWithTimeout(fallbackEndpointUrl, {}, 6000);
+    }
     if (response.ok) {
       const data = await response.json();
       if (Array.isArray(data)) {
@@ -28,7 +32,7 @@ export async function renderLibrary(searchQuery = "") {
       }
     }
   } catch (err) {
-    console.warn(`Spring Boot backend notice for ${endpointUrl}:`, err);
+    console.warn(`Spring Boot backend notice:`, err);
   }
 
   // If backend query returned empty array for audiobooks, show fallback audiobooks
@@ -65,12 +69,14 @@ export async function renderLibrary(searchQuery = "") {
         if (overrides.genres && Array.isArray(overrides.genres) && (!b.genres || b.genres.length === 0)) b.genres = overrides.genres;
       } catch (e) {}
     }
-    const pos = (b.progressResponse && b.progressResponse.position !== undefined && b.progressResponse.position !== null)
-      ? parseFloat(b.progressResponse.position)
-      : (b.position !== undefined && b.position !== null ? parseFloat(b.position) : (b.progressSeconds || 0));
+    const pos = (b.position !== undefined && b.position !== null)
+      ? parseFloat(b.position)
+      : ((b.progressResponse && b.progressResponse.position !== undefined && b.progressResponse.position !== null)
+        ? parseFloat(b.progressResponse.position)
+        : (b.progressSeconds || 0));
     b.position = pos;
     b.progressSeconds = pos;
-    b.completed = b.progressResponse ? !!b.progressResponse.completed : false;
+    b.completed = b.completed !== undefined ? !!b.completed : (b.progressResponse ? !!b.progressResponse.completed : false);
     b.lastPlayedTimestamp = b.lastPlayedTimestamp || 0;
     b.runtimeSeconds = b.duration || 0;
 

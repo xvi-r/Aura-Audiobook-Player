@@ -1,6 +1,7 @@
 // Authentication & User Session Manager (JSESSIONID HttpOnly Cookies)
 import { getApiBase, fetchWithTimeout } from "./config.js";
 import { router } from "./router.js";
+import { player } from "./player.js";
 
 export function getAuthenticatedUser() {
   return localStorage.getItem("aura_username") || null;
@@ -20,6 +21,9 @@ export async function logoutUser() {
   try {
     await fetchWithTimeout(`${API_BASE}/api/users/logout`, { method: "POST" }, 2500);
   } catch (e) {}
+  if (player && typeof player.unloadBook === "function") {
+    player.unloadBook();
+  }
   setAuthenticatedUser(null);
   router.navigate("#login");
 }

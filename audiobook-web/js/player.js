@@ -14,6 +14,7 @@ class PlayerController {
     this.sleepTimerRemaining = 0; // seconds remaining
     this.lastSyncTime = 0;
     this.isUserSeeking = false;
+    this.isPlayerHiddenByLogout = false;
     this.timelineMode = localStorage.getItem("aura_timeline_mode") || "chapter";
     this.showTimeRemaining = localStorage.getItem("aura_show_time_remaining") === "true";
 
@@ -472,7 +473,28 @@ class PlayerController {
     return this.currentBook.chapters[idx];
   }
 
+  unloadBook() {
+    this.pause();
+    try {
+      this.audio.src = "";
+    } catch (e) {}
+    this.currentBook = null;
+    this.currentChapterIndex = 0;
+    this.isPlayerHiddenByLogout = true;
+    const nowPlayingItem = document.getElementById("sidebar-now-playing-item");
+    if (nowPlayingItem) {
+      nowPlayingItem.style.display = "none";
+    }
+    const playerBar = document.getElementById("audio-player-bar");
+    if (playerBar) {
+      playerBar.style.display = "none";
+    }
+  }
+
   loadBook(book, chapterIndex = 0, elapsedBookSeconds = null, autoPlay = true, shouldNavigate = false) {
+    if (autoPlay) {
+      this.isPlayerHiddenByLogout = false;
+    }
     if (this.currentBook && this.currentBook.id && String(this.currentBook.id) !== String(book.id)) {
       if (this.audio && !isNaN(this.audio.currentTime) && this.audio.currentTime > 0) {
         this.saveProgress(true);
@@ -1120,7 +1142,10 @@ class PlayerController {
   }
 
   updateUI() {
-    if (!this.currentBook) return;
+    if (!this.currentBook || this.isPlayerHiddenByLogout) {
+      if (this.playerBar) this.playerBar.style.display = "none";
+      return;
+    }
 
     const chapter = this.getCurrentChapter();
     const chapterTitle = chapter ? chapter.title : "Chapter 1";

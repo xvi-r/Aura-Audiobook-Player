@@ -81,7 +81,7 @@ const initApp = () => {
   const syncBottomPlayerBar = (hideForNowPlaying = false) => {
     const playerBar = document.getElementById("audio-player-bar");
     if (!playerBar) return;
-    if (hideForNowPlaying || !player.currentBook) {
+    if (hideForNowPlaying || !player.currentBook || player.isPlayerHiddenByLogout) {
       playerBar.style.display = "none";
     } else {
       playerBar.style.display = "grid";
