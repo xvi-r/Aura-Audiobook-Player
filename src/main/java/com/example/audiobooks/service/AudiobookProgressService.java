@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 
+//This Service will be removed in favor of the UserAudioBook Service
 public class AudiobookProgressService {
 
     private final AudiobookProgressRepository repository;
