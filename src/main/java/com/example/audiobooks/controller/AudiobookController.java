@@ -38,7 +38,9 @@ public class AudiobookController {
     }
 
     @GetMapping("audiobook/getUserAudiobooks")
-    public 
+    public List<UserAudiobookResponse> getUsersAudiobooks() {
+        
+    }
 
 
     @GetMapping("/api/audiobooks")
