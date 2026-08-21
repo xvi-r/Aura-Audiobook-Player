@@ -1,4 +1,4 @@
-package com.example.audiobooks.service;
+package com.example.audiobooks.security;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -26,10 +26,6 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException(
                         "User not found: " + username));
 
-        return org.springframework.security.core.userdetails.User
-                .withUsername(user.getUsername())
-                .password(user.getPassword())
-                .authorities("ROLE_USER")
-                .build();
+        return new CustomUserDetails(user);
     }
 }

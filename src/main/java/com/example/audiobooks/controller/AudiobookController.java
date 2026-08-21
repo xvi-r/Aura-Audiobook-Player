@@ -5,6 +5,7 @@ import com.example.audiobooks.dto.userAudiobook.AudiobookProgressRequest;
 import com.example.audiobooks.dto.userAudiobook.AudiobookProgressResponse;
 import com.example.audiobooks.dto.userAudiobook.UserAudiobookResponse;
 import com.example.audiobooks.entity.Audiobook;
+import com.example.audiobooks.security.CustomUserDetails;
 import com.example.audiobooks.service.AudiobookProgressService;
 import com.example.audiobooks.service.AudiobookService;
 import com.example.audiobooks.service.UserAudiobookService;
@@ -40,10 +41,10 @@ public class AudiobookController {
 
 
 
-    // @GetMapping("audiobook/getUserAudiobooks")
-    // public List<UserAudiobookResponse> getUserAudiobooks(@AuthenticationPrincipal UserDetails user) {
-    //     return userAudiobookService.getUserAudiobooks(user.getUsername());
-    // }
+    @GetMapping("/api/audiobook/getUserAudiobooks")
+    public List<UserAudiobookResponse> getUserAudiobooks(@AuthenticationPrincipal CustomUserDetails user) {
+        return userAudiobookService.getUserAudiobooks(user.getId());
+    }
 
 
     @GetMapping("/api/audiobooks")

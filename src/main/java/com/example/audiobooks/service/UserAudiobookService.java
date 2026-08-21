@@ -21,8 +21,8 @@ import lombok.Setter;
 public class UserAudiobookService {
     private final UserAudiobookRepository userAudiobookRepository;
 
-    public List<UserAudiobookResponse> getUserAudiobooks(String username) {
-        List<UserAudiobook> userAudiobookData = userAudiobookRepository.findAllByUserUsername(username);
+    public List<UserAudiobookResponse> getUserAudiobooks(Long id) {
+        List<UserAudiobook> userAudiobookData = userAudiobookRepository.findAllByUserId(id);
 
         return userAudiobookData.stream()
                 .map(userAudiobook -> new UserAudiobookResponse(
