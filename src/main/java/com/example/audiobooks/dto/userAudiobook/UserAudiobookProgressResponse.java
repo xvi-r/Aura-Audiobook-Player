@@ -11,7 +11,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class AudiobookProgressResponse {
+public class UserAudiobookProgressResponse {
 
     private double position;
     private boolean completed;

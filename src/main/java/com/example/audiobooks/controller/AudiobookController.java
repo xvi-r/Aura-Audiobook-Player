@@ -1,8 +1,9 @@
 package com.example.audiobooks.controller;
 
+import com.example.audiobooks.dto.asin.AsinRequest;
 import com.example.audiobooks.dto.audiobook.AudiobookResponse;
 import com.example.audiobooks.dto.userAudiobook.AudiobookProgressRequest;
-import com.example.audiobooks.dto.userAudiobook.AudiobookProgressResponse;
+import com.example.audiobooks.dto.userAudiobook.UserAudiobookProgressResponse;
 import com.example.audiobooks.dto.userAudiobook.UserAudiobookResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.security.CustomUserDetails;
@@ -86,15 +87,15 @@ public class AudiobookController {
     }
 
     @PutMapping("/api/audiobooks/{audiobookId}/progress")
-    public AudiobookProgressResponse updateProgress(@PathVariable Long audiobookId,
+    public UserAudiobookProgressResponse updateProgress(@PathVariable Long audiobookId,
             @RequestBody AudiobookProgressRequest request, @AuthenticationPrincipal CustomUserDetails userDetails) {
         return userAudiobookService.updateProgress(userDetails.getId(), audiobookId, request);
 
     }
 
     @GetMapping("/api/audiobooks/{audiobookId}/progress")
-    public AudiobookProgressResponse getProgress(@PathVariable Long audiobookId) {
-        return progressService.getProgressForAudiobook(audiobookId);
+    public UserAudiobookProgressResponse getProgress(@PathVariable Long audiobookId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return userAudiobookService.getProgressForAudiobook(userDetails.getId(),audiobookId);
     }
 
     // this is used so the frontend knows what book to load in the playbar and
@@ -103,4 +104,12 @@ public class AudiobookController {
     public AudiobookResponse getMostRecentAudiobook() {
         return progressService.getMostRecentAudiobook();
     }
+
+    // @PutMapping("/api/audiobooks/{id}/asin")
+    // public AudiobookResponse enrichByAsin(
+    //         @PathVariable Long id,
+    //         @RequestBody AsinRequest request) {
+
+    //     return service.enrichAudiobookByAsin(id, request.asin(), request.country());
+    // }
 }

@@ -7,9 +7,12 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.example.audiobooks.dto.audiobook.AudiobookResponse;
 import com.example.audiobooks.dto.userAudiobook.AudiobookProgressRequest;
-import com.example.audiobooks.dto.userAudiobook.AudiobookProgressResponse;
+import com.example.audiobooks.dto.userAudiobook.UserAudiobookProgressResponse;
 import com.example.audiobooks.dto.userAudiobook.UserAudiobookResponse;
+import com.example.audiobooks.entity.Audiobook;
+import com.example.audiobooks.entity.AudiobookProgress;
 import com.example.audiobooks.entity.UserAudiobook;
 
 import lombok.Getter;
@@ -40,7 +43,7 @@ public class UserAudiobookService {
 
     }
 
-    public AudiobookProgressResponse updateProgress(Long userId, Long audiobookId,
+    public UserAudiobookProgressResponse updateProgress(Long userId, Long audiobookId,
             AudiobookProgressRequest audiobookProgressRequest) {
         UserAudiobook userAudiobook = userAudiobookRepository.findByUserIdAndAudiobookId(userId, audiobookId)
                 .orElseThrow(() -> new RuntimeException("UserAudiobook not found"));
@@ -50,7 +53,20 @@ public class UserAudiobookService {
 
         userAudiobookRepository.save(userAudiobook);
 
-        return new AudiobookProgressResponse(userAudiobook.getPosition(), userAudiobook.isCompleted(), Instant.now());
+        return new UserAudiobookProgressResponse(userAudiobook.getPosition(), userAudiobook.isCompleted(), Instant.now());
+    }
+
+    public UserAudiobookProgressResponse getProgressForAudiobook(Long UserId, Long audiobookId) {
+
+        UserAudiobook userAudiobook = userAudiobookRepository.findByUserIdAndAudiobookId(UserId, audiobookId).orElseThrow(() -> new RuntimeException("UserAudiobook Not Found"));
+              
+        UserAudiobookProgressResponse response = new UserAudiobookProgressResponse();
+
+        response.setPosition(userAudiobook.getPosition());
+        response.setCompleted(userAudiobook.isCompleted());
+        response.setUpdatedAt(userAudiobook.getLastPlayedAt());
+
+        return response;
     }
 
 }

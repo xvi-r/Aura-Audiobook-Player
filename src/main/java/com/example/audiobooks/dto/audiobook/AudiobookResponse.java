@@ -1,7 +1,5 @@
 package com.example.audiobooks.dto.audiobook;
 
-import com.example.audiobooks.dto.userAudiobook.AudiobookProgressResponse;
-
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,5 +14,4 @@ public class AudiobookResponse {
     private String narrator;
     private double duration;
 
-    private AudiobookProgressResponse progressResponse;
 }

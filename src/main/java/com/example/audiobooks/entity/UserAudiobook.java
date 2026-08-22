@@ -1,5 +1,7 @@
 package com.example.audiobooks.entity;
 
+import java.time.Instant;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -34,5 +36,7 @@ public class UserAudiobook {
     private double position;
 
     private boolean completed;
+
+    private Instant lastPlayedAt;
 
 }

@@ -54,15 +54,15 @@ public class AudiobookService {
     private final MP3Parser mp3Parser;
 
 
-    public List<AudiobookResponse> getAllAudiobooks() {
-        return repository.findAll()
-                .stream()
-                .map(audiobook -> { 
-                    AudiobookProgress audiobookProgress = progressRepository.findByAudiobookId(audiobook.getId()).orElse(null);
-                    return audiobookMapper.toResponse(audiobook, audiobookProgress);
-                })
-                .toList();
-    }
+    // public List<AudiobookResponse> getAllAudiobooks() {
+    //     return repository.findAll()
+    //             .stream()
+    //             .map(audiobook -> { 
+    //                 AudiobookProgress audiobookProgress = progressRepository.findByAudiobookId(audiobook.getId()).orElse(null);
+    //                 return audiobookMapper.toResponse(audiobook, audiobookProgress);
+    //             })
+    //             .toList();
+    // }
 
     public Audiobook getAudiobookById(Long id) {
         return repository.findById(id)
@@ -284,4 +284,7 @@ public class AudiobookService {
                 .body(resource);
     }
 
+    // public AsinResponse enrichAudiobookByAsin(Long audiobookId, String asin, String country) {
+
+    // }
 }
