@@ -295,7 +295,7 @@ public class AudiobookService {
         audiobook.setAsin(response.getAsin());
         audiobook.setTitle(response.getTitle());
         audiobook.setRating(response.getRating());
-        audiobook.setDescription(response.getDescription());
+        audiobook.setDescription(response.getSummary());
         audiobook.setAuthor(response.getAuthors().get(0).getName());
         audiobook.setNarrator(response.getNarrators().get(0).getName());
         audiobook.setCoverPath(response.getImage());

@@ -22,5 +22,6 @@ public class AudnexBookResponse {
     private LocalDate releaseDate;
     private Double runtimeLengthMin;
     private String title;
+    private String summary;
     
 }
