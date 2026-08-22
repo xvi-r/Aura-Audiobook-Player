@@ -75,7 +75,7 @@ public class UserAudiobookService {
     }
 
     public UserAudiobookResponse getMostRecentAudiobook(Long userId) {
-        UserAudiobook userAudiobook = userAudiobookRepository.findFirstByUserIdOrderByLastPlayedAtDesc(userId)
+        UserAudiobook userAudiobook = userAudiobookRepository.findFirstByUserIdAndLastPlayedAtIsNotNullOrderByLastPlayedAtDesc(userId)
                 .orElseThrow(() -> new NoPlayedAudiobookException("User has not played any audiobooks"));
 
         return new UserAudiobookResponse(
