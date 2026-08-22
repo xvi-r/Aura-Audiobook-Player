@@ -77,14 +77,19 @@ const initApp = () => {
   // 1. Initialize Player Controllers
   player.init();
 
-  // Helper to sync the display mode of the persistent bottom player bar
   const syncBottomPlayerBar = (hideForNowPlaying = false) => {
     const playerBar = document.getElementById("audio-player-bar");
+    const sidebar = document.getElementById("sidebar");
+    const mainContent = document.getElementById("main-content");
     if (!playerBar) return;
     if (hideForNowPlaying || !player.currentBook || player.isPlayerHiddenByLogout) {
       playerBar.style.display = "none";
+      if (sidebar) sidebar.style.paddingBottom = "20px";
+      if (mainContent) mainContent.style.paddingBottom = "32px";
     } else {
       playerBar.style.display = "grid";
+      if (sidebar) sidebar.style.paddingBottom = "110px";
+      if (mainContent) mainContent.style.paddingBottom = "110px";
     }
   };
 
