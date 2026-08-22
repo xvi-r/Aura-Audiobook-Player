@@ -13,7 +13,10 @@ A local audiobook and EPUB library application. It includes a Spring Boot API fo
 
 ## Features
 
+- User authentication & session management (Spring Security, BCrypt password hashing, and HttpOnly `JSESSIONID` session cookies).
+- Multi-tenant library isolation and user-specific playback progress syncing (`position` and `completed` status per user).
 - Import M4B, MP3, and M4A audiobooks and read their metadata and chapters.
+- Automatically associate uploaded audiobooks with the authenticated user.
 - Extract audiobook cover art with FFmpeg.
 - Import EPUB e-books, optionally associating them with an audiobook.
 - Browse library metadata, cover art, audio files, and EPUB files through the REST API.
@@ -94,15 +97,18 @@ The build output is generated in `electron/dist/` and is not committed.
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/audiobooks` | List audiobooks |
+| `POST` | `/api/users/register` | Register a new user account |
+| `POST` | `/api/users/login` | Authenticate user & establish session (`JSESSIONID`) |
+| `POST` | `/api/users/logout` | Terminate user session |
+| `GET` | `/api/audiobook/getUserAudiobooks` | Get authenticated user's library & progress |
+| `GET` | `/api/audiobooks/recent` | Get user's most recently played audiobook |
+| `PUT` | `/api/audiobooks/{id}/progress` | Update user playback progress (`position`, `completed`) |
+| `GET` | `/api/audiobooks/{id}/progress` | Get user playback progress |
+| `GET` | `/api/audiobooks` | List all audiobooks (global catalog) |
 | `GET` | `/api/audiobooks/{id}` | Get audiobook metadata |
 | `POST` | `/api/upload` | Upload an audiobook as multipart field `file` |
 | `GET` | `/api/audiobooks/{id}/cover` | Get cover art |
 | `GET` | `/api/audiobooks/{id}/file` | Stream the audio file (supports range requests) |
-| `GET` | `/api/EBooks` | List EPUB e-books |
-| `GET` | `/api/EBooks/{id}` | Get EPUB metadata |
-| `POST` | `/api/uploadEpub/{id}` | Upload an EPUB associated with audiobook `{id}` |
-| `GET` | `/api/epub/{id}` | Download an EPUB |
 
 ## Media and privacy
 
