@@ -54,16 +54,16 @@ public class AudiobookService {
     private final MP3Parser mp3Parser;
     private final RestClient restClient;
 
-
-    //TODO Check if this will be needed at all, if not remove it
+    // TODO Check if this will be needed at all, if not remove it
     // public List<AudiobookResponse> getAllAudiobooks() {
-    //     return repository.findAll()
-    //             .stream()
-    //             .map(audiobook -> { 
-    //                 AudiobookProgress audiobookProgress = progressRepository.findByAudiobookId(audiobook.getId()).orElse(null);
-    //                 return audiobookMapper.toResponse(audiobook, audiobookProgress);
-    //             })
-    //             .toList();
+    // return repository.findAll()
+    // .stream()
+    // .map(audiobook -> {
+    // AudiobookProgress audiobookProgress =
+    // progressRepository.findByAudiobookId(audiobook.getId()).orElse(null);
+    // return audiobookMapper.toResponse(audiobook, audiobookProgress);
+    // })
+    // .toList();
     // }
 
     public Audiobook getAudiobookById(Long id) {
@@ -287,24 +287,25 @@ public class AudiobookService {
     }
 
     public void enrichAudiobookByAsin(Long audiobookId, String asin, String country) {
-        Audiobook audiobook = repository.findById(audiobookId).orElseThrow(() -> new RuntimeException("Audiobook not found"));
+        Audiobook audiobook = repository.findById(audiobookId)
+                .orElseThrow(() -> new RuntimeException("Audiobook not found"));
 
         AudnexBookResponse response = restClient.get()
-        .uri("https://api.audnex.us/books/{asin}?region={country}", asin, country)
-        .retrieve()
-        .body(AudnexBookResponse.class);
+                .uri("https://api.audnex.us/books/{asin}?region={country}", asin, country)
+                .retrieve()
+                .body(AudnexBookResponse.class);
 
-        //TODO allow for multiple narrators and authors, download cover
+        // TODO allow for multiple narrators and authors, download cover
         audiobook.setAsin(response.getAsin());
         audiobook.setTitle(response.getTitle());
         audiobook.setRating(response.getRating());
         audiobook.setDescription(response.getSummary());
         audiobook.setAuthor(response.getAuthors().get(0).getName());
         audiobook.setNarrator(response.getNarrators().get(0).getName());
-        audiobook.setCoverPath(response.getImage());
+        audiobook.setCoverPath(downloadCover(response.getImage(), audiobookId));
         audiobook.setDuration(response.getRuntimeLengthMin() * 60);
-        
-        Series series = seriesRepository.findByAsin(asin).orElseGet(() -> {
+
+        Series series = seriesRepository.findByAsin(response.getSeriesPrimary().getAsin()).orElseGet(() -> {
             Series newSeries = new Series();
 
             newSeries.setAsin(response.getSeriesPrimary().getAsin());
@@ -315,7 +316,33 @@ public class AudiobookService {
 
         audiobook.setSeries(series);
 
-
         repository.save(audiobook);
     }
+
+    public String downloadCover(String imageUrl, Long audiobookId)  {
+
+        try {
+            byte[] image = restClient.get()
+                    .uri(imageUrl)
+                    .retrieve()
+                    .body(byte[].class);
+
+            Path directory = Paths.get(
+                    "app-data",
+                    "audiobooks",
+                    audiobookId.toString());
+
+            Files.createDirectories(directory);
+
+            Path coverPath = directory.resolve("cover.jpg");
+
+            Files.write(coverPath, image);
+
+            return coverPath.toString();
+            //TODO should probably make our own exception for this
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to download cover", e);
+        }
+    }
+
 }
