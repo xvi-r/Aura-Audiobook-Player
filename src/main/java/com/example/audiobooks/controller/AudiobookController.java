@@ -59,9 +59,9 @@ public class AudiobookController {
 
     // TODO: change to /api/upload/audiobook
     @PostMapping(value = "/api/upload", consumes = "multipart/form-data")
-    public String upload(@RequestParam("file") MultipartFile file) throws Exception {
+    public String upload(@RequestParam("file") MultipartFile file, @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
 
-        service.importAudiobook(file);
+        service.importAudiobook(file, userDetails.getId());
 
         System.out.println("Received file: " + file.getOriginalFilename());
         System.out.println("Size: " + file.getSize());

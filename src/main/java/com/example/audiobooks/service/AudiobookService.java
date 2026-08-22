@@ -3,11 +3,14 @@ package com.example.audiobooks.service;
 import com.example.audiobooks.dto.audiobook.AudiobookResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.entity.AudiobookProgress;
+import com.example.audiobooks.entity.UserAudiobook;
 import com.example.audiobooks.mapper.AudiobookMapper;
 import com.example.audiobooks.parser.M4Bparser;
 import com.example.audiobooks.parser.MP3Parser;
 import com.example.audiobooks.repository.AudiobookProgressRepository;
 import com.example.audiobooks.repository.AudiobookRepository;
+import com.example.audiobooks.repository.UserAudiobookRepository;
+import com.example.audiobooks.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -44,6 +47,9 @@ public class AudiobookService {
     private final AudiobookRepository repository;
     private final AudiobookProgressRepository progressRepository;
     private final AudiobookMapper audiobookMapper;
+    private final UserAudiobookService userAudiobookService;
+    private final UserAudiobookRepository userAudiobookRepository;
+    private final UserRepository userRepository;
     private final M4Bparser parser;
     private final MP3Parser mp3Parser;
 
@@ -75,7 +81,7 @@ public class AudiobookService {
         return new FileSystemResource(coverPath);
     }
 
-    public void importAudiobook(MultipartFile upload) throws Exception {
+    public void importAudiobook(MultipartFile upload, Long id) throws Exception {
 
         String originalFilename = upload.getOriginalFilename();
 
@@ -124,6 +130,14 @@ public class AudiobookService {
         System.out.println(tempFile.getAbsolutePath());
 
         repository.save(audiobook);
+
+        UserAudiobook userAudiobook = new UserAudiobook();
+        userAudiobook.setUser(userRepository.getReferenceById(id));
+        userAudiobook.setAudiobook(audiobook);
+        userAudiobook.setCompleted(false);
+        userAudiobook.setPosition(0.0);
+
+        userAudiobookRepository.save(userAudiobook);
     }
 
     private File extractCover(File audiobookFile, Path coverPath) throws IOException, InterruptedException {
