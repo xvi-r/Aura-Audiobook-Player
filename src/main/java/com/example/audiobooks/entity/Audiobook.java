@@ -28,6 +28,8 @@ public class Audiobook {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;    
 
+    private String asin;
+    
     private String title;
 
     private String author;

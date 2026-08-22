@@ -27,6 +27,7 @@ import java.nio.file.StandardCopyOption;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
@@ -47,6 +48,8 @@ public class AudiobookService {
     private final UserRepository userRepository;
     private final M4Bparser parser;
     private final MP3Parser mp3Parser;
+    private final RestClient restClient;
+
 
     //TODO Check if this will be needed at all, if not remove it
     // public List<AudiobookResponse> getAllAudiobooks() {
@@ -280,6 +283,9 @@ public class AudiobookService {
     }
 
     // public AsinResponse enrichAudiobookByAsin(Long audiobookId, String asin, String country) {
+    //     Audiobook audiobook = repository.findById(audiobookId).orElseThrow(() -> new RuntimeException("Audiobook not found"));
+
+        
 
     // }
 }
