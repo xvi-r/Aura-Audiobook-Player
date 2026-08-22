@@ -1,6 +1,7 @@
 package com.example.audiobooks.service;
 
 import com.example.audiobooks.dto.audiobook.AudiobookResponse;
+import com.example.audiobooks.dto.audnex.AudnexBookResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.entity.AudiobookProgress;
 import com.example.audiobooks.entity.UserAudiobook;
@@ -285,7 +286,10 @@ public class AudiobookService {
     // public AsinResponse enrichAudiobookByAsin(Long audiobookId, String asin, String country) {
     //     Audiobook audiobook = repository.findById(audiobookId).orElseThrow(() -> new RuntimeException("Audiobook not found"));
 
-        
+    //     AudnexBookResponse response = restClient.get()
+    //     .uri("https://api.audnex.us/books/{asin}?region={country}", asin, country)
+    //     .retrieve()
+    //     .body(AudnexBookResponse.class);
 
     // }
 }
