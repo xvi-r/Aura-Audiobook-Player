@@ -53,9 +53,9 @@ export const renderCollections = async (activeCollectionName = null) => {
     const gList = [];
 
     // 0. Primary Series Tag matching (e.g. Star Wars: Legends)
-    if (b.series && typeof b.series === "string" && b.series.trim().length > 0) {
-      const seriesName = b.series.trim();
-      if (!gList.includes(seriesName)) gList.push(seriesName);
+    const sName = typeof b.series === "string" ? b.series.trim() : (b.series && typeof b.series === "object" && b.series.name ? b.series.name.trim() : "");
+    if (sName.length > 0) {
+      if (!gList.includes(sName)) gList.push(sName);
     }
 
     // 1. Franchise keyword matching from title
@@ -278,7 +278,8 @@ const renderSingleCollection = async (collectionName, collections, autoGenreMap,
     // Loose fallback match
     const targetLower = (collectionName || "").toLowerCase();
     books = allBooks.filter(b => {
-      const fullText = `${b.title || ""} ${b.series || ""} ${b.author || ""} ${b.description || ""}`.toLowerCase();
+      const sName = typeof b.series === "string" ? b.series : (b.series && typeof b.series === "object" ? (b.series.name || "") : "");
+      const fullText = `${b.title || ""} ${sName} ${b.author || ""} ${b.description || ""}`.toLowerCase();
       let gList = b.genres || b.genre || [];
       if (typeof gList === "string") gList = gList.split(/[,;/|]+/).map(s => s.trim());
       const hasGenre = Array.isArray(gList) && gList.some(g => g && g.toString().toLowerCase() === targetLower);

@@ -117,8 +117,17 @@ export async function renderDetails(bookId) {
     "dune": "Dune"
   };
 
+  // Parse series name safely (String or Object { id, asin, name })
+  const getSeriesName = (s) => {
+    if (!s) return "";
+    if (typeof s === "string") return s.trim();
+    if (typeof s === "object" && s.name) return s.name.trim();
+    return "";
+  };
+  book.seriesName = getSeriesName(book.series);
+
   // Match against exact FRANCHISES map
-  const bookText = `${book.title || ""} ${book.series || ""} ${book.description || ""}`.toLowerCase();
+  const bookText = `${book.title || ""} ${book.seriesName} ${book.description || ""}`.toLowerCase();
   Object.keys(FRANCHISES).forEach(key => {
     if (bookText.includes(key.toLowerCase())) {
       const tagName = FRANCHISES[key];
@@ -260,10 +269,10 @@ export async function renderDetails(bookId) {
       <div class="details-content-col">
         <div class="details-title-section">
           <h1 class="details-title">${book.title}</h1>
-          ${book.series ? `
+          ${book.seriesName ? `
             <div class="details-series-tag" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 600; color: var(--accent-primary, #a78bfa); margin-top: 6px;">
               <i data-lucide="bookmark" style="width: 14px; height: 14px;"></i>
-              <span>${book.series}</span>
+              <span>${book.seriesName}</span>
             </div>
           ` : ""}
           <div class="details-creators" style="margin-top: 8px;">

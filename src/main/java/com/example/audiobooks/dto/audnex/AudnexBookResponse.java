@@ -23,5 +23,6 @@ public class AudnexBookResponse {
     private Double runtimeLengthMin;
     private String title;
     private String summary;
+    private AudnexSeriesPrimary seriesPrimary;
     
 }

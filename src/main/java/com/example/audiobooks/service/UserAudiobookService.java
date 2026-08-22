@@ -15,6 +15,7 @@ import com.example.audiobooks.dto.userAudiobook.UserAudiobookResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.entity.AudiobookProgress;
 import com.example.audiobooks.entity.UserAudiobook;
+import com.example.audiobooks.entity.Series;
 import com.example.audiobooks.exception.NoPlayedAudiobookException;
 
 import lombok.Getter;

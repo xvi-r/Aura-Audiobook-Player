@@ -4,10 +4,12 @@ import com.example.audiobooks.dto.audiobook.AudiobookResponse;
 import com.example.audiobooks.dto.audnex.AudnexBookResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.entity.AudiobookProgress;
+import com.example.audiobooks.entity.Series;
 import com.example.audiobooks.entity.UserAudiobook;
 import com.example.audiobooks.parser.M4Bparser;
 import com.example.audiobooks.parser.MP3Parser;
 import com.example.audiobooks.repository.AudiobookRepository;
+import com.example.audiobooks.repository.SeriesRepository;
 import com.example.audiobooks.repository.UserAudiobookRepository;
 import com.example.audiobooks.repository.UserRepository;
 
@@ -46,6 +48,7 @@ public class AudiobookService {
 
     private final AudiobookRepository repository;
     private final UserAudiobookRepository userAudiobookRepository;
+    private final SeriesRepository seriesRepository;
     private final UserRepository userRepository;
     private final M4Bparser parser;
     private final MP3Parser mp3Parser;
@@ -300,6 +303,18 @@ public class AudiobookService {
         audiobook.setNarrator(response.getNarrators().get(0).getName());
         audiobook.setCoverPath(response.getImage());
         audiobook.setDuration(response.getRuntimeLengthMin() * 60);
+        
+        Series series = seriesRepository.findByAsin(asin).orElseGet(() -> {
+            Series newSeries = new Series();
+
+            newSeries.setAsin(response.getSeriesPrimary().getAsin());
+            newSeries.setName(response.getSeriesPrimary().getName());
+
+            return seriesRepository.save(newSeries);
+        });
+
+        audiobook.setSeries(series);
+
 
         repository.save(audiobook);
     }
