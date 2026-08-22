@@ -1,10 +1,16 @@
 package com.example.audiobooks.dto.audnex;
 
+import java.time.LocalDate;
 import java.util.List;
+
+import lombok.Getter;
+
+@Getter
 
 public class AudnexBookResponse {
 
     private String asin;
+    private String rating;
     private List<AuthorResponse> authors;
     private String description;
     private List<GenreResponse> genres;
@@ -13,7 +19,8 @@ public class AudnexBookResponse {
     private String publisherName;
     private String isbn;
     private String language;
-    private String releaseDate;
+    private LocalDate releaseDate;
     private Double runtimeLengthMin;
     private String title;
+    
 }

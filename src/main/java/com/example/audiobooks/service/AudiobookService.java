@@ -283,13 +283,24 @@ public class AudiobookService {
                 .body(resource);
     }
 
-    // public AsinResponse enrichAudiobookByAsin(Long audiobookId, String asin, String country) {
-    //     Audiobook audiobook = repository.findById(audiobookId).orElseThrow(() -> new RuntimeException("Audiobook not found"));
+    public void enrichAudiobookByAsin(Long audiobookId, String asin, String country) {
+        Audiobook audiobook = repository.findById(audiobookId).orElseThrow(() -> new RuntimeException("Audiobook not found"));
 
-    //     AudnexBookResponse response = restClient.get()
-    //     .uri("https://api.audnex.us/books/{asin}?region={country}", asin, country)
-    //     .retrieve()
-    //     .body(AudnexBookResponse.class);
+        AudnexBookResponse response = restClient.get()
+        .uri("https://api.audnex.us/books/{asin}?region={country}", asin, country)
+        .retrieve()
+        .body(AudnexBookResponse.class);
 
-    // }
+        //TODO allow for multiple narrators and authors, download cover
+        audiobook.setAsin(response.getAsin());
+        audiobook.setTitle(response.getTitle());
+        audiobook.setRating(response.getRating());
+        audiobook.setDescription(response.getDescription());
+        audiobook.setAuthor(response.getAuthors().get(0).getName());
+        audiobook.setNarrator(response.getNarrators().get(0).getName());
+        audiobook.setCoverPath(response.getImage());
+        audiobook.setDuration(response.getRuntimeLengthMin() * 60);
+
+        repository.save(audiobook);
+    }
 }

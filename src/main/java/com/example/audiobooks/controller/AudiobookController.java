@@ -103,11 +103,11 @@ public class AudiobookController {
         return userAudiobookService.getMostRecentAudiobook(userDetails.getId());
     }
 
-//     @PutMapping("/api/audiobooks/{id}/asin")
-//     public AudiobookResponse enrichByAsin(
-//             @PathVariable Long id,
-//             @RequestBody AsinRequest request) {
+    @PutMapping("/api/audiobooks/{id}/asin")
+    public void enrichByAsin(
+            @PathVariable Long id,
+            @RequestBody AsinRequest request) {
 
-//         return service.enrichAudiobookByAsin(id, request.asin(), request.country());
-//     }
+         service.enrichAudiobookByAsin(id, request.asin(), request.country());
+    }
 }

@@ -29,7 +29,9 @@ public class Audiobook {
     private Long id;    
 
     private String asin;
-    
+
+    private String rating;
+
     private String title;
 
     private String author;
