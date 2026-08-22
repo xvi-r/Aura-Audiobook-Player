@@ -96,6 +96,13 @@ export async function renderLibrary(searchQuery = "") {
     b.rating = b.rating || "4.8";
     b.runtime = formatDuration(b.duration);
   });
+
+  // Sort books stably by ID so updated items maintain fixed grid order
+  books.sort((a, b) => {
+    const numA = Number(a.id) || 0;
+    const numB = Number(b.id) || 0;
+    return numA - numB;
+  });
   
   // 1. Filter Books
   const filteredBooks = books.filter((book) => {

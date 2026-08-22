@@ -25,7 +25,7 @@ public class UserAudiobookService {
     private final UserAudiobookRepository userAudiobookRepository;
 
     public List<UserAudiobookResponse> getUserAudiobooks(Long id) {
-        List<UserAudiobook> userAudiobookData = userAudiobookRepository.findAllByUserId(id);
+        List<UserAudiobook> userAudiobookData = userAudiobookRepository.findAllByUserIdOrderByAudiobookIdAsc(id);
 
         return userAudiobookData.stream()
                 .map(userAudiobook -> new UserAudiobookResponse(

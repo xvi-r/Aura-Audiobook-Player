@@ -9,5 +9,7 @@ import com.example.audiobooks.entity.UserAudiobook;
 
 public interface UserAudiobookRepository extends JpaRepository<UserAudiobook, Long> {
      List<UserAudiobook> findAllByUserId(Long id);
+     List<UserAudiobook> findAllByUserIdOrderByIdAsc(Long id);
      Optional<UserAudiobook> findByUserIdAndAudiobookId(Long userId, Long AudiobookId);
+     List<UserAudiobook> findAllByUserIdOrderByAudiobookIdAsc(Long userId);
 }
