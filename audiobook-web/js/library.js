@@ -54,21 +54,6 @@ export async function renderLibrary(searchQuery = "") {
     b.title = b.title || "Untitled Book";
     b.author = b.author || "Unknown Author";
 
-    const savedMeta = localStorage.getItem(`aura_meta_${b.id}`);
-    let customCover = null;
-    if (savedMeta) {
-      try {
-        const overrides = JSON.parse(savedMeta);
-        if (overrides.title && !b.title) b.title = overrides.title;
-        if (overrides.author && !b.author) b.author = overrides.author;
-        if (overrides.narrator && !b.narrator) b.narrator = overrides.narrator;
-        if (overrides.releaseYear && !b.releaseYear) b.releaseYear = overrides.releaseYear;
-        if (overrides.description && !b.description) b.description = overrides.description;
-        if (overrides.cover) customCover = overrides.cover;
-        if (overrides.asin && !b.asin) b.asin = overrides.asin;
-        if (overrides.genres && Array.isArray(overrides.genres) && (!b.genres || b.genres.length === 0)) b.genres = overrides.genres;
-      } catch (e) {}
-    }
     const pos = (b.position !== undefined && b.position !== null)
       ? parseFloat(b.position)
       : ((b.progressResponse && b.progressResponse.position !== undefined && b.progressResponse.position !== null)
@@ -81,13 +66,13 @@ export async function renderLibrary(searchQuery = "") {
     b.runtimeSeconds = b.duration || 0;
 
     // Cover image calculation
-    let coverUrl = customCover;
-    if (!coverUrl) {
-      if (b.cover && (b.cover.startsWith("http") || b.cover.startsWith("data:") || b.cover.startsWith("assets/"))) {
-        coverUrl = b.cover;
-      } else {
-        coverUrl = `${API_BASE}/api/audiobooks/${b.id}/cover`;
-      }
+    let coverUrl = null;
+    if (b.cover && (b.cover.startsWith("http") || b.cover.startsWith("data:") || b.cover.startsWith("assets/"))) {
+      coverUrl = b.cover;
+    } else if (b.coverPath && (b.coverPath.startsWith("http") || b.coverPath.startsWith("data:") || b.coverPath.startsWith("assets/"))) {
+      coverUrl = b.coverPath;
+    } else {
+      coverUrl = `${API_BASE}/api/audiobooks/${b.id}/cover`;
     }
     b.cover = coverUrl;
 

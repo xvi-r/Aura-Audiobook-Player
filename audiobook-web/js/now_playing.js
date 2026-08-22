@@ -48,20 +48,7 @@ export const renderNowPlaying = () => {
   const color1 = `hsla(${hue}, 60%, 15%, 0.45)`;
   const color2 = `hsla(${(hue + 40) % 360}, 50%, 8%, 0.15)`;
   
-  let coverUrl = book.cover;
-  if (book.id) {
-    try {
-      const savedMeta = localStorage.getItem(`aura_meta_${book.id}`);
-      if (savedMeta) {
-        const overrides = JSON.parse(savedMeta);
-        if (overrides.cover) coverUrl = overrides.cover;
-      }
-    } catch (e) {}
-  }
-  if (!coverUrl && typeof book.id === "number") {
-    coverUrl = `${getApiBase()}/api/audiobooks/${book.id}/cover`;
-  }
-  if (!coverUrl) coverUrl = "assets/covers/default.png";
+  let coverUrl = book.cover || book.coverPath || (typeof book.id === "number" ? `${getApiBase()}/api/audiobooks/${book.id}/cover` : "assets/covers/default.png");
   const totalDuration = player.audio.duration || book.duration || 0;
 
   mainContent.innerHTML = `

@@ -49,17 +49,6 @@ export const renderCollections = async (activeCollectionName = null) => {
   allBooks.forEach(b => {
     b.id = b.id ?? b.bookId ?? b._id ?? b.audiobookId;
 
-    // Merge local metadata overrides (like series tag from Audnex API or manual edits)
-    const savedMeta = localStorage.getItem(`aura_meta_${b.id}`);
-    if (savedMeta) {
-      try {
-        const overrides = JSON.parse(savedMeta);
-        if (overrides.series) b.series = overrides.series;
-        if (overrides.title) b.title = overrides.title;
-        if (overrides.genres && Array.isArray(overrides.genres)) b.genres = overrides.genres;
-      } catch (e) {}
-    }
-
     const title = (b.title || "").toLowerCase();
     const gList = [];
 
@@ -270,18 +259,7 @@ const renderSingleCollection = async (collectionName, collections, autoGenreMap,
       : (b.position !== undefined && b.position !== null ? parseFloat(b.position) : (b.progressSeconds || 0));
     b.position = pos;
     b.progressSeconds = pos;
-    b.completed = b.progressResponse ? !!b.progressResponse.completed : false;
-    let customCover = null;
-    if (b.id) {
-      try {
-        const savedMeta = localStorage.getItem(`aura_meta_${b.id}`);
-        if (savedMeta) {
-          const overrides = JSON.parse(savedMeta);
-          if (overrides.cover) customCover = overrides.cover;
-        }
-      } catch (e) {}
-    }
-    b.cover = customCover || (typeof b.id === "number" ? `${API_BASE}/api/audiobooks/${b.id}/cover` : (b.cover || "assets/covers/default.png"));
+    b.cover = b.cover || b.coverPath || (typeof b.id === "number" ? `${API_BASE}/api/audiobooks/${b.id}/cover` : "assets/covers/default.png");
     b.narrator = b.narrator || "Unknown Narrator";
     b.runtime = formatDuration(b.duration);
   });

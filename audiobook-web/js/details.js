@@ -76,47 +76,18 @@ export async function renderDetails(bookId) {
   // Map API entities to UI expectations
   book.progressSeconds = book.position ?? book.progressSeconds ?? 0;
   
-  const savedMeta = localStorage.getItem(`aura_meta_${book.id}`);
-  let customCover = null;
-  if (savedMeta) {
-    try {
-      const overrides = JSON.parse(savedMeta);
-      if (overrides.title) book.title = overrides.title;
-      if (overrides.author) book.author = overrides.author;
-      if (overrides.narrator) book.narrator = overrides.narrator;
-      if (overrides.releaseYear) book.releaseYear = overrides.releaseYear;
-      if (overrides.description) book.description = overrides.description;
-      if (overrides.cover) customCover = overrides.cover;
-      if (overrides.asin) book.asin = overrides.asin;
-      if (overrides.publisher) book.publisher = overrides.publisher;
-      if (overrides.series) book.series = overrides.series;
-      if (overrides.isbn) book.isbn = overrides.isbn;
-      if (overrides.language) book.language = overrides.language;
-      if (overrides.copyright) book.copyright = overrides.copyright;
-      if (overrides.formatType) book.formatType = overrides.formatType;
-      if (overrides.genres && Array.isArray(overrides.genres)) book.genres = overrides.genres;
-      if (overrides.rating) book.rating = parseFloat(overrides.rating);
-      if (overrides.duration) book.duration = overrides.duration;
-      if (overrides.chapters && Array.isArray(overrides.chapters) && overrides.chapters.length > 0) {
-        book.chapters = overrides.chapters;
-      }
-    } catch (e) {
-      console.warn("Failed to parse local metadata overrides", e);
-    }
-  }
-
   book.chapters = book.chapters || (mockMatch ? mockMatch.chapters : []);
   book.author = book.author || (mockMatch ? mockMatch.author : "Unknown Author");
   book.narrator = book.narrator || (mockMatch ? mockMatch.narrator : "Digital EPUB Edition");
 
-  let coverUrl = customCover;
-  if (!coverUrl) {
-    if (book.cover && (book.cover.startsWith("http") || book.cover.startsWith("data:") || book.cover.startsWith("assets/"))) {
-      coverUrl = book.cover;
-    } else {
-      const targetId = book.audioBookId ?? book.id;
-      coverUrl = `${API_BASE}/api/audiobooks/${targetId}/cover`;
-    }
+  let coverUrl = null;
+  if (book.cover && (book.cover.startsWith("http") || book.cover.startsWith("data:") || book.cover.startsWith("assets/"))) {
+    coverUrl = book.cover;
+  } else if (book.coverPath && (book.coverPath.startsWith("http") || book.coverPath.startsWith("data:") || book.coverPath.startsWith("assets/"))) {
+    coverUrl = book.coverPath;
+  } else {
+    const targetId = book.audioBookId ?? book.id;
+    coverUrl = `${API_BASE}/api/audiobooks/${targetId}/cover`;
   }
   book.cover = coverUrl;
   
@@ -165,36 +136,6 @@ export async function renderDetails(bookId) {
   book.narrator = book.narrator || (mockMatch ? mockMatch.narrator : "Narrator Unspecified");
   book.description = book.description || (mockMatch ? mockMatch.description : "No description available.");
   book.publisher = book.publisher || (mockMatch ? mockMatch.publisher : "Publisher Unknown");
-
-  // Auto-fetch Audnex official ASIN chapters if book has an ASIN and no cached ASIN chapters exist
-  if (book.asin && (!savedMeta || !JSON.parse(savedMeta).chapters)) {
-    try {
-      const chResp = await fetch(`https://api.audnex.us/books/${encodeURIComponent(book.asin)}/chapters?region=uk`);
-      if (chResp.ok) {
-        const chData = await chResp.json();
-        if (chData && Array.isArray(chData.chapters) && chData.chapters.length > 0) {
-          book.chapters = chData.chapters.map((ch, idx) => {
-            const startSec = ch.startOffsetSec !== undefined ? ch.startOffsetSec : Math.floor((ch.startOffsetMs || 0) / 1000);
-            const durSec = ch.lengthMs ? Math.floor(ch.lengthMs / 1000) : 0;
-            return {
-              id: idx + 1,
-              title: ch.title || `Chapter ${idx + 1}`,
-              startTime: startSec,
-              duration: durSec
-            };
-          });
-          // Cache in local overrides
-          try {
-            const existingMeta = savedMeta ? JSON.parse(savedMeta) : {};
-            existingMeta.chapters = book.chapters;
-            localStorage.setItem(`aura_meta_${book.id}`, JSON.stringify(existingMeta));
-          } catch (e) {}
-        }
-      }
-    } catch (e) {
-      console.warn("[Aura Audnex] Auto-fetch chapters on render error:", e);
-    }
-  }
 
   if (!book.chapters || !Array.isArray(book.chapters) || book.chapters.length === 0) {
     if (mockMatch && mockMatch.chapters && mockMatch.chapters.length > 0) {
@@ -835,16 +776,6 @@ export function openEditModal(book, onSaved) {
       // Update active book object
       book.cover = backendCoverUrl;
 
-      // Remove custom cover override from localStorage
-      try {
-        const savedMeta = localStorage.getItem(`aura_meta_${book.id}`);
-        if (savedMeta) {
-          const overrides = JSON.parse(savedMeta);
-          delete overrides.cover;
-          localStorage.setItem(`aura_meta_${book.id}`, JSON.stringify(overrides));
-        }
-      } catch (e) {}
-
       // Update active Player UI if loaded
       if (player.currentBook && String(player.currentBook.id) === String(book.id)) {
         player.currentBook.cover = backendCoverUrl;
@@ -865,7 +796,7 @@ export function openEditModal(book, onSaved) {
     });
   }
 
-  // Audnex ASIN Query Handler
+  // Audnex ASIN Query Handler (Backend Server-Side Enrichment)
   const fetchBtn = document.getElementById("edit-asin-fetch-btn");
   const asinInput = document.getElementById("edit-asin-input");
   const statusDiv = document.getElementById("edit-asin-status");
@@ -879,112 +810,31 @@ export function openEditModal(book, onSaved) {
         return;
       }
 
-      statusDiv.innerHTML = `<span style="color: var(--accent-primary, #a78bfa); display: flex; align-items: center; gap: 6px;"><i data-lucide="loader-2" class="spin"></i> Querying Audnex API for ASIN ${rawAsin}...</span>`;
+      statusDiv.innerHTML = `<span style="color: var(--accent-primary, #a78bfa); display: flex; align-items: center; gap: 6px;"><i data-lucide="loader-2" class="spin"></i> Enriching backend database for ASIN ${rawAsin}...</span>`;
       if (window.lucide) window.lucide.createIcons();
       fetchBtn.disabled = true;
 
       try {
         const regionEl = document.getElementById("edit-asin-region");
-        const region = regionEl ? regionEl.value : "uk";
-        const response = await fetch(`https://api.audnex.us/books/${encodeURIComponent(rawAsin)}?region=${encodeURIComponent(region)}`);
-        if (!response.ok) {
-          throw new Error(`Audnex API returned HTTP ${response.status}`);
+        const region = regionEl ? regionEl.value : "us";
+        const API_BASE = getApiBase();
+
+        const response = await fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}/asin`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ asin: rawAsin, country: region })
+        }, 10000);
+
+        if (response.ok) {
+          statusDiv.innerHTML = `<span style="color: #22c55e; font-weight: 600; display: flex; align-items: center; gap: 4px;"><i data-lucide="check-circle-2"></i> Metadata for "${rawAsin}" successfully enriched in PostgreSQL database! Click Save Changes to refresh.</span>`;
+        } else {
+          throw new Error(`Backend returned HTTP ${response.status}`);
         }
-        const data = await response.json();
-
-        // Auto-fill Title
-        if (data.title) {
-          const titleEl = document.getElementById("edit-title-input");
-          if (titleEl) titleEl.value = data.title;
-        }
-
-        // Auto-fill Authors
-        if (data.authors && Array.isArray(data.authors) && data.authors.length > 0) {
-          const authorEl = document.getElementById("edit-author-input");
-          if (authorEl) authorEl.value = data.authors.map(a => a.name).filter(Boolean).join(", ");
-        }
-
-        // Auto-fill Narrators
-        if (data.narrators && Array.isArray(data.narrators) && data.narrators.length > 0) {
-          const narratorEl = document.getElementById("edit-narrator-input");
-          if (narratorEl) narratorEl.value = data.narrators.map(n => n.name).filter(Boolean).join(", ");
-        }
-
-        // Auto-fill Year
-        if (data.releaseDate) {
-          const yearEl = document.getElementById("edit-year-input");
-          const y = new Date(data.releaseDate).getFullYear();
-          if (yearEl && !isNaN(y)) yearEl.value = y.toString();
-        }
-
-        // Auto-fill Description / Summary if checkbox is selected or missing
-        const descEl = document.getElementById("edit-desc-input");
-        const currentDesc = descEl ? descEl.value.trim() : "";
-        const isMissingDesc = !currentDesc || currentDesc.toLowerCase() === "no description available.";
-        const replaceDescCheckbox = document.getElementById("edit-replace-description");
-        const shouldReplaceDesc = replaceDescCheckbox ? replaceDescCheckbox.checked : true;
-
-        const rawSummary = data.summary || data.description || "";
-        if (rawSummary && (shouldReplaceDesc || isMissingDesc)) {
-          let formattedDesc = rawSummary
-            .replace(/<\/p>/gi, "\n\n")
-            .replace(/<br\s*\/?>/gi, "\n");
-          const tempDiv = document.createElement("div");
-          tempDiv.innerHTML = formattedDesc;
-          const cleanDesc = (tempDiv.textContent.trim() || tempDiv.innerText.trim()).replace(/\n\s*\n\s*\n+/g, "\n\n");
-          if (descEl) descEl.value = cleanDesc;
-          asinInput.dataset.fetchedDescription = cleanDesc;
-        }
-
-        // Fetch Official Audnex Chapters if checkbox is selected
-        let chapterMsg = "";
-        const useChaptersCheckbox = document.getElementById("edit-use-asin-chapters");
-        if (useChaptersCheckbox && useChaptersCheckbox.checked) {
-          try {
-            const chResp = await fetch(`https://api.audnex.us/books/${encodeURIComponent(rawAsin)}/chapters?region=${encodeURIComponent(region)}`);
-            if (chResp.ok) {
-              const chData = await chResp.json();
-              if (chData && Array.isArray(chData.chapters) && chData.chapters.length > 0) {
-                const parsedChapters = chData.chapters.map((ch, idx) => {
-                  const startSec = ch.startOffsetSec !== undefined ? ch.startOffsetSec : Math.floor((ch.startOffsetMs || 0) / 1000);
-                  const durSec = ch.lengthMs ? Math.floor(ch.lengthMs / 1000) : 0;
-                  return {
-                    id: idx + 1,
-                    title: ch.title || `Chapter ${idx + 1}`,
-                    startTime: startSec,
-                    duration: durSec
-                  };
-                });
-                asinInput.dataset.fetchedChapters = JSON.stringify(parsedChapters);
-                chapterMsg = ` & ${parsedChapters.length} official chapters`;
-              }
-            }
-          } catch (chErr) {
-            console.warn("[Aura Audnex] Error fetching ASIN chapters:", chErr);
-          }
-        }
-
-        // Save extra fetched attributes to dataset for form submit payload
-        if (data.image) asinInput.dataset.fetchedCover = data.image;
-        if (data.publisherName) asinInput.dataset.fetchedPublisher = data.publisherName;
-        if (data.seriesPrimary && data.seriesPrimary.name) asinInput.dataset.fetchedSeries = data.seriesPrimary.name;
-        if (data.genres && Array.isArray(data.genres)) {
-          asinInput.dataset.fetchedGenres = JSON.stringify(data.genres.map(g => g.name).filter(Boolean));
-        }
-        if (data.rating) asinInput.dataset.fetchedRating = data.rating;
-        if (data.runtimeLengthMin) asinInput.dataset.fetchedRuntime = (data.runtimeLengthMin * 60).toString();
-        if (data.isbn) asinInput.dataset.fetchedIsbn = data.isbn;
-        if (data.language) asinInput.dataset.fetchedLanguage = data.language;
-        if (data.copyright) asinInput.dataset.fetchedCopyright = data.copyright.toString();
-        if (data.formatType) asinInput.dataset.fetchedFormat = data.formatType;
-
-        statusDiv.innerHTML = `<span style="color: #22c55e; font-weight: 600; display: flex; align-items: center; gap: 4px;"><i data-lucide="check-circle-2"></i> Metadata${chapterMsg} for "${data.title}" successfully fetched from Audnex! Click Save Changes to apply.</span>`;
-        if (window.lucide) window.lucide.createIcons();
       } catch (err) {
-        console.warn("[Aura Audnex] Error fetching ASIN data:", err);
-        statusDiv.innerHTML = `<span style="color: #ef4444; display: flex; align-items: center; gap: 4px;"><i data-lucide="alert-triangle"></i> Audnex Fetch Failed: ${err.message || "ASIN not found"}</span>`;
-        if (window.lucide) window.lucide.createIcons();
+        console.warn("[Aura Backend ASIN] Error:", err);
+        statusDiv.innerHTML = `<span style="color: #ef4444; display: flex; align-items: center; gap: 4px;"><i data-lucide="alert-triangle"></i> Backend ASIN Enrichment Failed: ${err.message || "ASIN query failed"}</span>`;
       } finally {
+        if (window.lucide) window.lucide.createIcons();
         fetchBtn.disabled = false;
       }
     });
@@ -995,107 +845,21 @@ export function openEditModal(book, onSaved) {
     const asinInput = document.getElementById("edit-asin-input");
     const cleanAsin = asinInput ? asinInput.value.trim().toUpperCase() : (book.asin || "");
     const regionEl = document.getElementById("edit-asin-region");
-    const region = regionEl ? regionEl.value : "uk";
-    const useChaptersCheckbox = document.getElementById("edit-use-asin-chapters");
+    const region = regionEl ? regionEl.value : "us";
 
-    if (useChaptersCheckbox && useChaptersCheckbox.checked && cleanAsin && (!asinInput || !asinInput.dataset.fetchedChapters)) {
+    // Submit ASIN payload { asin, country } to Spring Boot backend PUT /api/audiobooks/{id}/asin
+    if (cleanAsin) {
       try {
-        const chResp = await fetch(`https://api.audnex.us/books/${encodeURIComponent(cleanAsin)}/chapters?region=${encodeURIComponent(region)}`);
-        if (chResp.ok) {
-          const chData = await chResp.json();
-          if (chData && Array.isArray(chData.chapters) && chData.chapters.length > 0) {
-            const parsedChapters = chData.chapters.map((ch, idx) => {
-              const startSec = ch.startOffsetSec !== undefined ? ch.startOffsetSec : Math.floor((ch.startOffsetMs || 0) / 1000);
-              const durSec = ch.lengthMs ? Math.floor(ch.lengthMs / 1000) : 0;
-              return {
-                id: idx + 1,
-                title: ch.title || `Chapter ${idx + 1}`,
-                startTime: startSec,
-                duration: durSec
-              };
-            });
-            if (asinInput) asinInput.dataset.fetchedChapters = JSON.stringify(parsedChapters);
-          }
-        }
-      } catch (chErr) {
-        console.warn("[Aura Audnex] Error fetching chapters on submit:", chErr);
+        const API_BASE = getApiBase();
+        await fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}/asin`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ asin: cleanAsin, country: region })
+        }, 10000);
+      } catch (aErr) {
+        console.warn("[Aura Backend ASIN Submit] Notice:", aErr);
       }
     }
-
-    const isResetCover = asinInput && asinInput.dataset.resetCover === "true";
-    let resolvedCover = book.cover || "";
-    if (asinInput && asinInput.dataset.fetchedCover) {
-      resolvedCover = asinInput.dataset.fetchedCover;
-    } else if (isResetCover) {
-      resolvedCover = (typeof book.id === "number" || !isNaN(Number(book.id)))
-        ? `${API_BASE}/api/audiobooks/${book.id}/cover`
-        : "cover.jpg";
-    }
-
-    const updated = {
-      title: document.getElementById("edit-title-input").value.trim(),
-      author: document.getElementById("edit-author-input").value.trim(),
-      narrator: document.getElementById("edit-narrator-input").value.trim(),
-      releaseYear: document.getElementById("edit-year-input").value.trim(),
-      description: document.getElementById("edit-desc-input").value.trim() || (book.description || ""),
-      asin: cleanAsin,
-      cover: resolvedCover,
-      publisher: (asinInput && asinInput.dataset.fetchedPublisher) ? asinInput.dataset.fetchedPublisher : (book.publisher || ""),
-      series: (asinInput && asinInput.dataset.fetchedSeries) ? asinInput.dataset.fetchedSeries : (book.series || ""),
-      genres: (asinInput && asinInput.dataset.fetchedGenres) ? JSON.parse(asinInput.dataset.fetchedGenres) : (book.genres || []),
-      rating: (asinInput && asinInput.dataset.fetchedRating) ? parseFloat(asinInput.dataset.fetchedRating) : (book.rating || 4.8),
-      duration: (asinInput && asinInput.dataset.fetchedRuntime) ? parseFloat(asinInput.dataset.fetchedRuntime) : (book.duration || 0),
-      isbn: (asinInput && asinInput.dataset.fetchedIsbn) ? asinInput.dataset.fetchedIsbn : (book.isbn || ""),
-      language: (asinInput && asinInput.dataset.fetchedLanguage) ? asinInput.dataset.fetchedLanguage : (book.language || ""),
-      copyright: (asinInput && asinInput.dataset.fetchedCopyright) ? asinInput.dataset.fetchedCopyright : (book.copyright || ""),
-      formatType: (asinInput && asinInput.dataset.fetchedFormat) ? asinInput.dataset.fetchedFormat : (book.formatType || ""),
-      chapters: (asinInput && asinInput.dataset.fetchedChapters) ? JSON.parse(asinInput.dataset.fetchedChapters) : (book.chapters || [])
-    };
-
-    if (isResetCover) {
-      delete updated.cover;
-    }
-
-    // Persist overrides locally
-    localStorage.setItem(`aura_meta_${book.id}`, JSON.stringify(updated));
-
-    // Update active book properties
-    book.title = updated.title;
-    book.author = updated.author;
-    book.narrator = updated.narrator;
-    book.releaseYear = updated.releaseYear;
-    book.description = updated.description;
-    book.asin = updated.asin;
-    book.cover = resolvedCover;
-    if (updated.publisher) book.publisher = updated.publisher;
-    if (updated.series) book.series = updated.series;
-    if (updated.genres && updated.genres.length > 0) book.genres = updated.genres;
-    if (updated.rating) book.rating = updated.rating;
-    if (updated.duration) book.duration = updated.duration;
-    if (updated.isbn) book.isbn = updated.isbn;
-    if (updated.language) book.language = updated.language;
-    if (updated.copyright) book.copyright = updated.copyright;
-    if (updated.formatType) book.formatType = updated.formatType;
-    if (updated.chapters && updated.chapters.length > 0) book.chapters = updated.chapters;
-
-    // If currently playing in player controller, update player UI dynamically
-    if (player.currentBook && String(player.currentBook.id) === String(book.id)) {
-      player.currentBook.title = updated.title;
-      player.currentBook.author = updated.author;
-      player.currentBook.narrator = updated.narrator;
-      player.currentBook.cover = resolvedCover;
-      player.updateUI();
-    }
-
-    // Try sending PUT to backend if endpoint exists
-    try {
-      const API_BASE = getApiBase();
-      fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated)
-      }, 5000).catch(() => {});
-    } catch (err) {}
 
     closeModal();
     if (typeof onSaved === "function") {
@@ -1159,20 +923,6 @@ export async function renderEbookDetails(ebookId) {
   }
 
   ebook.id = ebook.id ?? ebookId;
-
-  // Load custom metadata overrides if saved
-  const savedMeta = localStorage.getItem(`aura_meta_${ebook.id}`);
-  let customCover = null;
-  if (savedMeta) {
-    try {
-      const overrides = JSON.parse(savedMeta);
-      if (overrides.title && !ebook.title) ebook.title = overrides.title;
-      if (overrides.author && !ebook.author) ebook.author = overrides.author;
-      if (overrides.description && !ebook.description) ebook.description = overrides.description;
-      if (overrides.isbn && !ebook.ISBN) ebook.ISBN = overrides.isbn;
-      if (overrides.cover) customCover = overrides.cover;
-    } catch (e) {}
-  }
 
   const title = ebook.title || `E-Book #${ebook.id}`;
   const isbn = ebook.ISBN || ebook.isbn || "N/A";

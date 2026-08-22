@@ -508,22 +508,6 @@ class PlayerController {
     this.currentBook = book;
     this.lastBackendSyncTime = Date.now();
 
-    if (this.currentBook && this.currentBook.id) {
-      const savedMeta = localStorage.getItem(`aura_meta_${this.currentBook.id}`);
-      if (savedMeta) {
-        try {
-          const overrides = JSON.parse(savedMeta);
-          if (overrides.cover) this.currentBook.cover = overrides.cover;
-          if (overrides.title) this.currentBook.title = overrides.title;
-          if (overrides.author) this.currentBook.author = overrides.author;
-          if (overrides.narrator) this.currentBook.narrator = overrides.narrator;
-          if (overrides.chapters && Array.isArray(overrides.chapters) && overrides.chapters.length > 0) {
-            this.currentBook.chapters = overrides.chapters;
-          }
-        } catch (e) {}
-      }
-    }
-
     const nowPlayingItem = document.getElementById("sidebar-now-playing-item");
     if (nowPlayingItem) {
       nowPlayingItem.style.display = "block";
@@ -1156,20 +1140,8 @@ class PlayerController {
 
     // Bottom Player: Artwork and Text
     if (this.coverImg) {
-      let effectiveCover = this.currentBook.cover;
-      if (this.currentBook.id) {
-        try {
-          const savedMeta = localStorage.getItem(`aura_meta_${this.currentBook.id}`);
-          if (savedMeta) {
-            const overrides = JSON.parse(savedMeta);
-            if (overrides.cover) effectiveCover = overrides.cover;
-          }
-        } catch (e) {}
-      }
-      if (!effectiveCover && typeof this.currentBook.id === "number") {
-        effectiveCover = `${getApiBase()}/api/audiobooks/${this.currentBook.id}/cover`;
-      }
-      this.coverImg.src = effectiveCover || "assets/covers/default.png";
+      let effectiveCover = this.currentBook.cover || (typeof this.currentBook.id === "number" ? `${getApiBase()}/api/audiobooks/${this.currentBook.id}/cover` : "assets/covers/default.png");
+      this.coverImg.src = effectiveCover;
       this.coverImg.alt = this.currentBook.title;
     }
     if (this.titleLabel) this.titleLabel.textContent = this.currentBook.title;
