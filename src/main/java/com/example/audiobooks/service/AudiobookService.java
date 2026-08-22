@@ -4,10 +4,8 @@ import com.example.audiobooks.dto.audiobook.AudiobookResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.entity.AudiobookProgress;
 import com.example.audiobooks.entity.UserAudiobook;
-import com.example.audiobooks.mapper.AudiobookMapper;
 import com.example.audiobooks.parser.M4Bparser;
 import com.example.audiobooks.parser.MP3Parser;
-import com.example.audiobooks.repository.AudiobookProgressRepository;
 import com.example.audiobooks.repository.AudiobookRepository;
 import com.example.audiobooks.repository.UserAudiobookRepository;
 import com.example.audiobooks.repository.UserRepository;
@@ -37,7 +35,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.List;
+
 import java.util.Locale;
 
 @Service
@@ -45,15 +43,12 @@ import java.util.Locale;
 public class AudiobookService {
 
     private final AudiobookRepository repository;
-    private final AudiobookProgressRepository progressRepository;
-    private final AudiobookMapper audiobookMapper;
-    private final UserAudiobookService userAudiobookService;
     private final UserAudiobookRepository userAudiobookRepository;
     private final UserRepository userRepository;
     private final M4Bparser parser;
     private final MP3Parser mp3Parser;
 
-
+    //TODO Check if this will be needed at all, if not remove it
     // public List<AudiobookResponse> getAllAudiobooks() {
     //     return repository.findAll()
     //             .stream()

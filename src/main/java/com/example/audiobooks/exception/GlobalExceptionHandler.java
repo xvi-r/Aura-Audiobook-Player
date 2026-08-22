@@ -16,4 +16,13 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.CONFLICT)
                 .body(ex.getMessage());
     }
+
+    @ExceptionHandler(NoPlayedAudiobookException.class)
+    public ResponseEntity<String> handleNoPlayedAudiobook(
+            NoPlayedAudiobookException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ex.getMessage());
+    }
 }

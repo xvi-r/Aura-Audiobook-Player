@@ -79,8 +79,12 @@ class PlayerController {
       const recentResponse = await fetchWithTimeout(`${API_BASE}/api/audiobooks/recent`, {}, 3000);
       if (recentResponse.ok && recentResponse.status !== 204) {
         const data = await recentResponse.json();
-        if (data && data.id) {
-          initialBook = data;
+        if (data) {
+          const bookId = data.id ?? data.audioBookId ?? data.audiobookId ?? data.bookId;
+          if (bookId) {
+            data.id = bookId;
+            initialBook = data;
+          }
         }
       }
     } catch (err) {

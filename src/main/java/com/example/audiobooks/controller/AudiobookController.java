@@ -7,7 +7,6 @@ import com.example.audiobooks.dto.userAudiobook.UserAudiobookProgressResponse;
 import com.example.audiobooks.dto.userAudiobook.UserAudiobookResponse;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.security.CustomUserDetails;
-import com.example.audiobooks.service.AudiobookProgressService;
 import com.example.audiobooks.service.AudiobookService;
 import com.example.audiobooks.service.UserAudiobookService;
 
@@ -37,7 +36,6 @@ import java.util.List;
 public class AudiobookController {
 
     private final AudiobookService service;
-    private final AudiobookProgressService progressService;
     private final UserAudiobookService userAudiobookService;
 
     @GetMapping("/api/audiobook/getUserAudiobooks")
@@ -45,10 +43,10 @@ public class AudiobookController {
         return userAudiobookService.getUserAudiobooks(user.getId());
     }
 
-    @GetMapping("/api/audiobooks")
-    public List<AudiobookResponse> getAllAudiobooks() {
-        return service.getAllAudiobooks();
-    }
+    // @GetMapping("/api/audiobooks")
+    // public List<AudiobookResponse> getAllAudiobooks() {
+    //     return service.getAllAudiobooks();
+    // }
 
     @GetMapping("/api/audiobooks/{id}")
     public Audiobook getAudiobook(@PathVariable Long id) {
@@ -101,8 +99,8 @@ public class AudiobookController {
     // this is used so the frontend knows what book to load in the playbar and
     // visually
     @GetMapping("/api/audiobooks/recent")
-    public AudiobookResponse getMostRecentAudiobook() {
-        return progressService.getMostRecentAudiobook();
+    public UserAudiobookResponse getMostRecentAudiobook(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return userAudiobookService.getMostRecentAudiobook(userDetails.getId());
     }
 
     // @PutMapping("/api/audiobooks/{id}/asin")

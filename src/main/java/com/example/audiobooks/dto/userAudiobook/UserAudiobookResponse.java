@@ -4,7 +4,7 @@ import java.util.List;
 
 //might be best to start moving dtos to records instead of classes
 public record UserAudiobookResponse(
-        Long id,
+        Long audioBookId,
         String title,
         String author,
         double duration,
