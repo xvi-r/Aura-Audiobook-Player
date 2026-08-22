@@ -39,13 +39,10 @@ public class AudiobookController {
     private final AudiobookProgressService progressService;
     private final UserAudiobookService userAudiobookService;
 
-
-
     @GetMapping("/api/audiobook/getUserAudiobooks")
     public List<UserAudiobookResponse> getUserAudiobooks(@AuthenticationPrincipal CustomUserDetails user) {
         return userAudiobookService.getUserAudiobooks(user.getId());
     }
-
 
     @GetMapping("/api/audiobooks")
     public List<AudiobookResponse> getAllAudiobooks() {
@@ -59,7 +56,8 @@ public class AudiobookController {
 
     // TODO: change to /api/upload/audiobook
     @PostMapping(value = "/api/upload", consumes = "multipart/form-data")
-    public String upload(@RequestParam("file") MultipartFile file, @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
+    public String upload(@RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
 
         service.importAudiobook(file, userDetails.getId());
 
@@ -87,9 +85,10 @@ public class AudiobookController {
         return service.getAudioFile(id, range);
     }
 
-    @PutMapping("/api/audiobooks/{audiobookId}/progress") 
-    public AudiobookProgressResponse updateProgress(@PathVariable Long audiobookId, @RequestBody AudiobookProgressRequest request) {
-        return progressService.updateProgress(audiobookId, request);
+    @PutMapping("/api/audiobooks/{audiobookId}/progress")
+    public AudiobookProgressResponse updateProgress(@PathVariable Long audiobookId,
+            @RequestBody AudiobookProgressRequest request, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return userAudiobookService.updateProgress(userDetails.getId(), audiobookId, request);
 
     }
 
@@ -98,8 +97,9 @@ public class AudiobookController {
         return progressService.getProgressForAudiobook(audiobookId);
     }
 
-    // this is used so the frontend knows what book to load in the playbar and visually
-    @GetMapping("/api/audiobooks/recent") 
+    // this is used so the frontend knows what book to load in the playbar and
+    // visually
+    @GetMapping("/api/audiobooks/recent")
     public AudiobookResponse getMostRecentAudiobook() {
         return progressService.getMostRecentAudiobook();
     }

@@ -2,10 +2,13 @@ package com.example.audiobooks.service;
 
 import com.example.audiobooks.repository.UserAudiobookRepository;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.example.audiobooks.dto.userAudiobook.AudiobookProgressRequest;
+import com.example.audiobooks.dto.userAudiobook.AudiobookProgressResponse;
 import com.example.audiobooks.dto.userAudiobook.UserAudiobookResponse;
 import com.example.audiobooks.entity.UserAudiobook;
 
@@ -36,4 +39,18 @@ public class UserAudiobookService {
                 .toList();
 
     }
+
+    public AudiobookProgressResponse updateProgress(Long userId, Long audiobookId,
+            AudiobookProgressRequest audiobookProgressRequest) {
+        UserAudiobook userAudiobook = userAudiobookRepository.findByUserIdAndAudiobookId(userId, audiobookId)
+                .orElseThrow(() -> new RuntimeException("UserAudiobook not found"));
+
+        userAudiobook.setPosition(audiobookProgressRequest.getPosition());
+        userAudiobook.setCompleted(audiobookProgressRequest.isCompleted());
+
+        userAudiobookRepository.save(userAudiobook);
+
+        return new AudiobookProgressResponse(userAudiobook.getPosition(), userAudiobook.isCompleted(), Instant.now());
+    }
+
 }
