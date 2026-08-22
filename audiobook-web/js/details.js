@@ -9,7 +9,7 @@ export async function renderDetails(bookId) {
   const API_BASE = getApiBase();
   const container = document.getElementById("main-content");
   container.className = "fade-in";
-  container.style.overflow = "hidden";
+  container.style.overflowY = "auto";
 
   let book = null;
   try {
@@ -883,7 +883,7 @@ export async function renderEbookDetails(ebookId) {
   const API_BASE = getApiBase();
   const container = document.getElementById("main-content");
   container.className = "fade-in";
-  container.style.overflow = "hidden";
+  container.style.overflowY = "auto";
 
   let ebook = null;
   try {
