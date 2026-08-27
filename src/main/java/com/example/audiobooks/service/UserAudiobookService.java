@@ -41,7 +41,8 @@ public class UserAudiobookService {
                         userAudiobook.getAudiobook().getDuration(),
                         userAudiobook.getAudiobook().getGenres(),
                         userAudiobook.getPosition(),
-                        userAudiobook.isCompleted()))
+                        userAudiobook.isCompleted(),
+                        userAudiobook.getLastPlayedAt()))
                 .toList();
 
     }
@@ -86,7 +87,8 @@ public class UserAudiobookService {
                 userAudiobook.getAudiobook().getDuration(),
                 userAudiobook.getAudiobook().getGenres(),
                 userAudiobook.getPosition(),
-                userAudiobook.isCompleted());
+                userAudiobook.isCompleted(),
+                userAudiobook.getLastPlayedAt());
 
     }
 }
