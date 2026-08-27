@@ -1,5 +1,6 @@
 package com.example.audiobooks.dto.userAudiobook;
 
+import java.time.Instant;
 import java.util.List;
 
 //might be best to start moving dtos to records instead of classes
@@ -10,5 +11,6 @@ public record UserAudiobookResponse(
         double duration,
         List<String> genres,
         double position,
-        boolean completed
+        boolean completed,
+        Instant getLastPlayedAt
 ) {}
