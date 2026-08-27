@@ -305,7 +305,10 @@ public class AudiobookService {
         audiobook.setCoverPath(downloadCover(response.getImage(), audiobookId));
         audiobook.setDuration(response.getRuntimeLengthMin() * 60);
 
-        Series series = seriesRepository.findByAsin(response.getSeriesPrimary().getAsin()).orElseGet(() -> {
+        Series series = null;
+        //TODO this is a temporary check 
+        if (response.getSeriesPrimary() != null) {
+            series = seriesRepository.findByAsin(response.getSeriesPrimary().getAsin()).orElseGet(() -> {
             Series newSeries = new Series();
 
             newSeries.setAsin(response.getSeriesPrimary().getAsin());
@@ -313,8 +316,9 @@ public class AudiobookService {
 
             return seriesRepository.save(newSeries);
         });
+        } else {audiobook.setSeries(series);}
+        
 
-        audiobook.setSeries(series);
 
         repository.save(audiobook);
     }

@@ -53,3 +53,6 @@ electron/node_modules/
 *~
 
 electron/dist/
+tauri/src-tauri/target/
+tauri/dist/
+
