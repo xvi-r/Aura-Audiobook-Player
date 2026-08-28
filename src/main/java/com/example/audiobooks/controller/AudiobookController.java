@@ -111,7 +111,7 @@ public class AudiobookController {
         service.enrichAudiobookByAsin(id, request.asin(), request.country());
     }
     
-    @GetMapping("/api/audiobooks/recent")
+    @GetMapping("/api/audiobooks/continue-listening")
     public List<UserAudiobookResponse> continueListening(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return userAudiobookService.continueListening();
     }
