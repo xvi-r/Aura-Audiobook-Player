@@ -12,5 +12,7 @@ public interface UserAudiobookRepository extends JpaRepository<UserAudiobook, Lo
      List<UserAudiobook> findAllByUserIdOrderByIdAsc(Long id);
      Optional<UserAudiobook> findByUserIdAndAudiobookId(Long userId, Long AudiobookId);
      List<UserAudiobook> findAllByUserIdOrderByAudiobookIdAsc(Long userId);
+
      Optional<UserAudiobook> findFirstByUserIdAndLastPlayedAtIsNotNullOrderByLastPlayedAtDesc(Long userId);
+     List<UserAudiobook> findTop8ByUserIdAndLastPlayedAtIsNotNullOrderByLastPlayedAtDesc(Long userId);
 }

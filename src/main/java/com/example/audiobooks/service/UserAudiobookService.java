@@ -1,13 +1,16 @@
 package com.example.audiobooks.service;
 
 import com.example.audiobooks.repository.UserAudiobookRepository;
+import com.example.audiobooks.security.CustomUserDetails;
 
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 
+import com.example.audiobooks.mapper.UserAudiobookMapper;
 import com.example.audiobooks.dto.audiobook.AudiobookResponse;
 import com.example.audiobooks.dto.userAudiobook.AudiobookProgressRequest;
 import com.example.audiobooks.dto.userAudiobook.UserAudiobookProgressResponse;
@@ -28,21 +31,14 @@ import lombok.Setter;
 
 @Service
 public class UserAudiobookService {
-    private final UserAudiobookRepository userAudiobookRepository;
+        private final UserAudiobookRepository userAudiobookRepository;
+        private final UserAudiobookMapper userAudiobookMapper;
 
     public List<UserAudiobookResponse> getUserAudiobooks(Long id) {
         List<UserAudiobook> userAudiobookData = userAudiobookRepository.findAllByUserIdOrderByAudiobookIdAsc(id);
 
         return userAudiobookData.stream()
-                .map(userAudiobook -> new UserAudiobookResponse(
-                        userAudiobook.getAudiobook().getId(),
-                        userAudiobook.getAudiobook().getTitle(),
-                        userAudiobook.getAudiobook().getAuthor(),
-                        userAudiobook.getAudiobook().getDuration(),
-                        userAudiobook.getAudiobook().getGenres(),
-                        userAudiobook.getPosition(),
-                        userAudiobook.isCompleted(),
-                        userAudiobook.getLastPlayedAt()))
+                .map(userAudiobookMapper::toResponse)
                 .toList();
 
     }
@@ -80,15 +76,8 @@ public class UserAudiobookService {
         UserAudiobook userAudiobook = userAudiobookRepository.findFirstByUserIdAndLastPlayedAtIsNotNullOrderByLastPlayedAtDesc(userId)
                 .orElseThrow(() -> new NoPlayedAudiobookException("User has not played any audiobooks"));
 
-        return new UserAudiobookResponse(
-                userAudiobook.getAudiobook().getId(),
-                userAudiobook.getAudiobook().getTitle(),
-                userAudiobook.getAudiobook().getAuthor(),
-                userAudiobook.getAudiobook().getDuration(),
-                userAudiobook.getAudiobook().getGenres(),
-                userAudiobook.getPosition(),
-                userAudiobook.isCompleted(),
-                userAudiobook.getLastPlayedAt());
-
+        return userAudiobookMapper.toResponse(userAudiobook);
     }
+    
+
 }
