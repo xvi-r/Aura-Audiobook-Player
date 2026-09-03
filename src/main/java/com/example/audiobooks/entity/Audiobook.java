@@ -59,6 +59,6 @@ public class Audiobook {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @OneToMany(mappedBy = "audiobook",cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "audiobook",cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Chapter> chapters = new ArrayList<>();
 }
