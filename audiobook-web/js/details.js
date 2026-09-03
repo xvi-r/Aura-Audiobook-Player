@@ -826,12 +826,14 @@ export function openEditModal(book, onSaved) {
       try {
         const regionEl = document.getElementById("edit-asin-region");
         const region = regionEl ? regionEl.value : "us";
+        const chaptersCb = document.getElementById("edit-use-asin-chapters");
+        const fetchChapters = chaptersCb ? chaptersCb.checked : true;
         const API_BASE = getApiBase();
 
         const response = await fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}/asin`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ asin: rawAsin, country: region })
+          body: JSON.stringify({ asin: rawAsin, country: region, fetchChapters: fetchChapters })
         }, 10000);
 
         if (response.ok) {
@@ -855,15 +857,17 @@ export function openEditModal(book, onSaved) {
     const cleanAsin = asinInput ? asinInput.value.trim().toUpperCase() : (book.asin || "");
     const regionEl = document.getElementById("edit-asin-region");
     const region = regionEl ? regionEl.value : "us";
+    const chaptersCb = document.getElementById("edit-use-asin-chapters");
+    const fetchChapters = chaptersCb ? chaptersCb.checked : true;
 
-    // Submit ASIN payload { asin, country } to Spring Boot backend PUT /api/audiobooks/{id}/asin
+    // Submit ASIN payload { asin, country, fetchChapters } to Spring Boot backend PUT /api/audiobooks/{id}/asin
     if (cleanAsin) {
       try {
         const API_BASE = getApiBase();
         await fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}/asin`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ asin: cleanAsin, country: region })
+          body: JSON.stringify({ asin: cleanAsin, country: region, fetchChapters: fetchChapters })
         }, 10000);
       } catch (aErr) {
         console.warn("[Aura Backend ASIN Submit] Notice:", aErr);
