@@ -318,7 +318,7 @@ export async function renderDetails(bookId) {
         <!-- Description -->
         <div class="details-description" id="details-desc-box">
           <h3>Description</h3>
-          <p class="desc-text collapsed" id="details-desc-text">${book.description}</p>
+          <div class="desc-text collapsed" id="details-desc-text">${book.description}</div>
           ${book.description && book.description.length > 180 ? `
             <button type="button" class="desc-toggle-btn" id="desc-toggle-btn">
               <span>Read More</span>
