@@ -6,7 +6,7 @@ import { getApiBase, fetchWithTimeout } from "./config.js";
 import { openEditModal } from "./details.js";
 import { openEpubReader } from "./epub_reader.js";
 
-export async function renderLibrary(searchQuery = "") {
+export async function renderLibrary(searchQuery = "", isRecentlyPlayedView = false) {
   const API_BASE = getApiBase();
   const container = document.getElementById("main-content");
   container.className = "fade-in library-view-active"; // Trigger entry transition
@@ -35,6 +35,20 @@ export async function renderLibrary(searchQuery = "") {
     console.warn(`Spring Boot backend notice:`, err);
   }
 
+  // Fetch Continue Listening list from backend GET /api/audiobooks/continue-listening
+  let continueListeningList = [];
+  try {
+    const clResp = await fetchWithTimeout(`${API_BASE}/api/audiobooks/continue-listening`, {}, 4000);
+    if (clResp.ok && clResp.status !== 204) {
+      const clData = await clResp.json();
+      if (Array.isArray(clData)) {
+        continueListeningList = clData;
+      }
+    }
+  } catch (clErr) {
+    console.warn("[Aura] Continue listening backend fetch notice:", clErr);
+  }
+
   // If backend query returned empty array for audiobooks, show fallback audiobooks
   if (books.length === 0) {
     books = JSON.parse(JSON.stringify(AUDIOBOOKS));
@@ -48,8 +62,8 @@ export async function renderLibrary(searchQuery = "") {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
-  // Map API entities to UI contract
-  books.forEach(b => {
+  // Helper to normalize book object
+  const normalizeBook = (b) => {
     b.id = b.id ?? b.bookId ?? b._id ?? b.audioBookId;
     b.title = b.title || "Untitled Book";
     b.author = b.author || "Unknown Author";
@@ -65,7 +79,6 @@ export async function renderLibrary(searchQuery = "") {
     b.lastPlayedTimestamp = b.lastPlayedTimestamp || 0;
     b.runtimeSeconds = b.duration || 0;
 
-    // Cover image calculation
     let coverUrl = null;
     if (b.cover && (b.cover.startsWith("http") || b.cover.startsWith("data:") || b.cover.startsWith("assets/"))) {
       coverUrl = b.cover;
@@ -80,7 +93,18 @@ export async function renderLibrary(searchQuery = "") {
     b.genres = b.genres || ["Audiobook"];
     b.rating = b.rating || "4.8";
     b.runtime = formatDuration(b.duration);
-  });
+  };
+
+  // Map API entities to UI contract
+  books.forEach(normalizeBook);
+  continueListeningList.forEach(normalizeBook);
+
+  // Fallback to client-side filter if backend continue-listening endpoint returned empty
+  if (continueListeningList.length === 0) {
+    continueListeningList = books.filter(
+      (b) => b.progressSeconds > 0 && b.progressSeconds < b.runtimeSeconds
+    ).sort((a, b) => (b.lastPlayedTimestamp || 0) - (a.lastPlayedTimestamp || 0));
+  }
 
   // Sort books stably by ID so updated items maintain fixed grid order
   books.sort((a, b) => {
@@ -90,19 +114,17 @@ export async function renderLibrary(searchQuery = "") {
   });
   
   // 1. Filter Books
-  const filteredBooks = books.filter((book) => {
-    return (
-      (book.title && book.title.toLowerCase().includes(query)) ||
-      (book.author && book.author.toLowerCase().includes(query)) ||
-      (book.narrator && book.narrator.toLowerCase().includes(query)) ||
-      (book.genres && book.genres.some(genre => genre.toLowerCase().includes(query)))
-    );
-  });
-
-  // 2. Separate "Continue Listening" (audiobooks only)
-  const continueListeningList = books.filter(
-    (b) => b.progressSeconds > 0 && b.progressSeconds < b.runtimeSeconds
-  ).sort((a, b) => (b.lastPlayedTimestamp || 0) - (a.lastPlayedTimestamp || 0));
+  let filteredBooks = isRecentlyPlayedView ? continueListeningList : books;
+  if (query) {
+    filteredBooks = filteredBooks.filter((book) => {
+      return (
+        (book.title && book.title.toLowerCase().includes(query)) ||
+        (book.author && book.author.toLowerCase().includes(query)) ||
+        (book.narrator && book.narrator.toLowerCase().includes(query)) ||
+        (book.genres && book.genres.some(genre => genre.toLowerCase().includes(query)))
+      );
+    });
+  }
 
   // Assemble HTML Content
   let html = `

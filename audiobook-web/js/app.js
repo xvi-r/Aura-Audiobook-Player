@@ -113,7 +113,7 @@ const initApp = () => {
 
   router.addRoute("#recently-played", async () => {
     cleanupPreviousView();
-    await renderLibrary();
+    await renderLibrary("", true);
     updateActiveSidebar("#recently-played");
     syncBottomPlayerBar(false);
   });
