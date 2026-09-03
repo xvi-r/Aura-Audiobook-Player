@@ -286,7 +286,7 @@ public class AudiobookService {
                 .body(resource);
     }
 
-    public void enrichAudiobookByAsin(Long audiobookId, String asin, String country) {
+    public void enrichAudiobookByAsin(Long audiobookId, String asin, String country, Boolean fetchChapters) {
         Audiobook audiobook = repository.findById(audiobookId)
                 .orElseThrow(() -> new RuntimeException("Audiobook not found"));
 

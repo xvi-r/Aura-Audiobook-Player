@@ -108,7 +108,7 @@ public class AudiobookController {
             @PathVariable Long id,
             @RequestBody AsinRequest request) {
 
-        service.enrichAudiobookByAsin(id, request.asin(), request.country());
+        service.enrichAudiobookByAsin(id, request.asin(), request.country(), request.fetchChapters());
     }
     
     @GetMapping("/api/audiobooks/continue-listening")
