@@ -2,8 +2,11 @@ package com.example.audiobooks.service;
 
 import com.example.audiobooks.dto.audiobook.AudiobookResponse;
 import com.example.audiobooks.dto.audnex.AudnexBookResponse;
+import com.example.audiobooks.dto.audnexChapters.AudnexChapterDto;
+import com.example.audiobooks.dto.audnexChapters.AudnexChaptersResponseDto;
 import com.example.audiobooks.entity.Audiobook;
 import com.example.audiobooks.entity.AudiobookProgress;
+import com.example.audiobooks.entity.Chapter;
 import com.example.audiobooks.entity.Series;
 import com.example.audiobooks.entity.UserAudiobook;
 import com.example.audiobooks.parser.M4Bparser;
@@ -30,6 +33,7 @@ import java.nio.file.StandardCopyOption;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -39,8 +43,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -286,6 +293,7 @@ public class AudiobookService {
                 .body(resource);
     }
 
+    @Transactional
     public void enrichAudiobookByAsin(Long audiobookId, String asin, String country, Boolean fetchChapters) {
         Audiobook audiobook = repository.findById(audiobookId)
                 .orElseThrow(() -> new RuntimeException("Audiobook not found"));
@@ -316,7 +324,33 @@ public class AudiobookService {
 
         audiobook.setSeries(series);
 
-        repository.save(audiobook);
+        if( fetchChapters ) { enrichChaptersByAsin(audiobook, asin, country);}
+
+    }
+
+    private void enrichChaptersByAsin(Audiobook audiobook, String asin, String country) {
+        AudnexChaptersResponseDto response = restClient.get()
+                .uri("https://api.audnex.us/books/{asin}/chapters?region={country}", asin, country)
+                .retrieve()
+                .body(AudnexChaptersResponseDto.class);
+        
+        List<Chapter> newChapters = new ArrayList<>();
+
+        for (int i = 0; i < response.chapters().size(); i++) {
+            AudnexChapterDto chapter = response.chapters().get(i);
+
+            Chapter newChapter = Chapter.builder()
+                    .title(chapter.title())
+                    .startTimeMs((double) chapter.startOffsetSec())
+                    .endTimeMs((double) chapter.startOffsetSec() + chapter.lengthMs() / 1000)
+                    .chapterNumber(i + 1)
+                    .audiobook(audiobook)
+                    .build();
+
+            newChapters.add(newChapter);
+        }
+        audiobook.getChapters().clear();
+        audiobook.getChapters().addAll(newChapters);
     }
 
     public String downloadCover(String imageUrl, Long audiobookId)  {
