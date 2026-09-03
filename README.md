@@ -2,26 +2,25 @@
 
 ![Status](https://img.shields.io/badge/status-in%20development-f59e0b?style=plastic)
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=plastic&logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.0-6DB33F?style=plastic&logo=springboot&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.3-6DB33F?style=plastic&logo=springboot&logoColor=white)
 ![Electron](https://img.shields.io/badge/Electron-43-47848F?style=plastic&logo=electron&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-supported-4169E1?style=plastic&logo=postgresql&logoColor=white)
 ![API](https://img.shields.io/badge/API-Swagger%20%2F%20OpenAPI-85EA2D?style=plastic&logo=swagger&logoColor=black)
 
-A local audiobook and EPUB library application. It includes a Spring Boot API for importing, cataloguing, and streaming media, a browser-based interface, and an Electron desktop shell.
+A local audiobook streaming and library application. It includes a Spring Boot API for importing, cataloguing, and streaming media, a browser-based interface, and an Electron desktop shell.
 
-> **Development status:** This is an in-development project, not a finished product. Features, APIs, and data formats may change, and some edge cases still need refinement, Electron is also not fully supported yet.
+> **Development status:** This is an in-development project, not a finished product. Features, APIs, and data formats may change, and some edge cases still need refinement. Electron is also not fully supported yet.
 
 ## Features
 
 - User authentication & session management (Spring Security, BCrypt password hashing, and HttpOnly `JSESSIONID` session cookies).
 - Multi-tenant library isolation and user-specific playback progress syncing (`position` and `completed` status per user).
+- Continue listening shelf API returning top 8 recently played audiobooks per user.
 - Import M4B, MP3, and M4A audiobooks and read their metadata and chapters.
 - Automatically associate uploaded audiobooks with the authenticated user.
 - Extract audiobook cover art with FFmpeg.
-- Import EPUB e-books, optionally associating them with an audiobook.
-- Browse library metadata, cover art, audio files, and EPUB files through the REST API.
+- Browse library metadata, cover art, and audio files through the REST API.
 - Correct incomplete or unreliable embedded audiobook metadata with an Audible ASIN. The web UI can retrieve title, cover, series, publisher, genres, runtime, and chapter timestamps from Audnex.
-- Look up selected words while reading EPUBs using dictionary and Wikipedia results, with a Wookieepedia (Star Wars Fandom) lookup when a general definition is not available.
 - Run the web interface in a browser or in the Electron desktop app.
 
 ## Project layout
@@ -102,10 +101,12 @@ The build output is generated in `electron/dist/` and is not committed.
 | `POST` | `/api/users/logout` | Terminate user session |
 | `GET` | `/api/audiobook/getUserAudiobooks` | Get authenticated user's library & progress |
 | `GET` | `/api/audiobooks/recent` | Get user's most recently played audiobook |
+| `GET` | `/api/audiobooks/continue-listening` | Get user's top 8 recently played audiobooks for continue listening shelf |
 | `PUT` | `/api/audiobooks/{id}/progress` | Update user playback progress (`position`, `completed`) |
 | `GET` | `/api/audiobooks/{id}/progress` | Get user playback progress |
 | `GET` | `/api/audiobooks` | List all audiobooks (global catalog) |
 | `GET` | `/api/audiobooks/{id}` | Get audiobook metadata |
+| `PUT` | `/api/audiobooks/{id}/asin` | Enrich audiobook metadata via Audnex by ASIN |
 | `POST` | `/api/upload` | Upload an audiobook as multipart field `file` |
 | `GET` | `/api/audiobooks/{id}/cover` | Get cover art |
 | `GET` | `/api/audiobooks/{id}/file` | Stream the audio file (supports range requests) |
@@ -120,7 +121,7 @@ Also excluded are local configuration, Node dependencies, Java build artifacts, 
 git status
 ```
 
-The ASIN metadata and in-reader lookup features use third-party services (Audnex, DictionaryAPI, Wikipedia, Wiktionary, and Wookieepedia). They need an internet connection, may be unavailable or incomplete, and should be treated as helpful corrections rather than an authoritative source of metadata.
+The ASIN metadata feature uses third-party services (Audnex). They need an internet connection, may be unavailable or incomplete, and should be treated as helpful corrections rather than an authoritative source of metadata.
 
 ## Development
 
