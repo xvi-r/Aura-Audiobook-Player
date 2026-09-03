@@ -113,6 +113,6 @@ public class AudiobookController {
     
     @GetMapping("/api/audiobooks/continue-listening")
     public List<UserAudiobookResponse> continueListening(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        return userAudiobookService.continueListening();
+        return userAudiobookService.continueListening(userDetails.getId());
     }
 }

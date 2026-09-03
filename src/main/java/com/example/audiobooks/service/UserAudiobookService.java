@@ -79,5 +79,11 @@ public class UserAudiobookService {
         return userAudiobookMapper.toResponse(userAudiobook);
     }
     
+    public List<UserAudiobookResponse> continueListening(Long userId) {
+        List<UserAudiobook> userAudiobooks = userAudiobookRepository.findTop8ByUserIdAndLastPlayedAtIsNotNullOrderByLastPlayedAtDesc(userId);
 
+        return userAudiobooks.stream()
+                .map(userAudiobookMapper::toResponse)
+                .toList();
+    }
 }
