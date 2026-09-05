@@ -108,4 +108,36 @@ public class AudiobookServiceTest {
         assertThat(mockAudiobook.getChapters().get(0).getTitle()).isEqualTo("Chapter 1");
         assertThat(mockAudiobook.getChapters().get(1).getTitle()).isEqualTo("Chapter 2");
     }
+
+    @Test
+    @DisplayName("enrichAudiobookByAsin - Should handle standalone audiobook when seriesPrimary is null")
+    void enrichAudiobookByAsin_shouldHandleStandaloneAudiobook_whenSeriesPrimaryIsNull() {
+        Audiobook mockAudiobook = new Audiobook();
+        mockAudiobook.setId(2L);
+        when(repository.findById(2L)).thenReturn(Optional.of(mockAudiobook));
+
+        // Audnex response WITHOUT seriesPrimary (standalone book)
+        String standaloneBookJson = """
+            {
+              "asin": "B07P8V5M28", "title": "Project Hail Mary", "rating": "4.9",
+              "authors": [{"name": "Andy Weir"}],
+              "narrators": [{"name": "Ray Porter"}],
+              "image": "https://example.com/cover2.jpg",
+              "runtimeLengthMin": 960.0
+            }
+            """;
+
+        server.expect(requestTo("https://api.audnex.us/books/B07P8V5M28?region=us"))
+                .andRespond(withSuccess(standaloneBookJson, MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://example.com/cover2.jpg"))
+                .andRespond(withSuccess(new byte[]{4, 5, 6}, MediaType.IMAGE_JPEG));
+
+        // Act - Enrich standalone book with fetchChapters = false
+        audiobookService.enrichAudiobookByAsin(2L, "B07P8V5M28", "us", false);
+
+        // Assert - Verify metadata updated and series remains null without crashing
+        assertThat(mockAudiobook.getTitle()).isEqualTo("Project Hail Mary");
+        assertThat(mockAudiobook.getAuthor()).isEqualTo("Andy Weir");
+        assertThat(mockAudiobook.getSeries()).isNull();
+    }
 }
