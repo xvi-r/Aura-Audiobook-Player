@@ -8,7 +8,8 @@ class PlayerController {
     this.currentChapterIndex = 0;
     this.isPlaying = false;
     this.playbackSpeed = 1.0;
-    this.volume = 0.8;
+    const savedVol = localStorage.getItem("aura_volume");
+    this.volume = (savedVol !== null && !isNaN(parseFloat(savedVol))) ? parseFloat(savedVol) : 0.8;
     this.sleepTimerMinutes = 0; // 0 means off
     this.sleepTimerRemaining = 0; // seconds remaining
     this.lastSyncTime = 0;
@@ -21,6 +22,7 @@ class PlayerController {
     this.audio = new Audio();
     this.audio.crossOrigin = "use-credentials";
     this.audio.preload = "auto";
+    this.audio.volume = this.volume;
     this.timerId = null;
     this.sleepTimerId = null;
 
@@ -69,6 +71,7 @@ class PlayerController {
     this.cacheDOMElements();
     this.attachEventListeners();
     this.attachAudioListeners();
+    this.setVolume(this.volume);
 
     const API_BASE = getApiBase();
 
@@ -279,10 +282,28 @@ class PlayerController {
       wrapper.addEventListener("pointercancel", stopWrapperDrag);
     }
 
-    // Volume Adjustment
-    this.volumeSlider.addEventListener("input", (e) => {
-      this.setVolume(parseFloat(e.target.value));
-    });
+    // Volume Adjustment & Mute Toggle
+    if (this.volumeSlider) {
+      this.volumeSlider.addEventListener("input", (e) => {
+        this.setVolume(parseFloat(e.target.value));
+      });
+    }
+
+    const muteBtn = document.getElementById("p-volume-mute");
+    if (muteBtn) {
+      muteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.toggleMute();
+      });
+    }
+
+    const npMuteBtn = document.getElementById("np-volume-mute");
+    if (npMuteBtn) {
+      npMuteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.toggleMute();
+      });
+    }
 
     // Speed Popover
     this.speedBtn.addEventListener("click", (e) => {
@@ -535,8 +556,8 @@ class PlayerController {
   loadBook(book, chapterIndex = 0, elapsedBookSeconds = null, autoPlay = true, shouldNavigate = false) {
     if (autoPlay) {
       this.isPlayerHiddenByLogout = false;
+      try { sessionStorage.setItem("aura_playbar_active", "true"); } catch (e) {}
     }
-    try { sessionStorage.setItem("aura_playbar_active", "true"); } catch (e) {}
     if (this.currentBook && this.currentBook.id && String(this.currentBook.id) !== String(book.id)) {
       if (this.audio && !isNaN(this.audio.currentTime) && this.audio.currentTime > 0) {
         this.saveProgress(true);
@@ -690,6 +711,10 @@ class PlayerController {
 
   play() {
     if (!this.currentBook) return;
+
+    this.isPlayerHiddenByLogout = false;
+    try { sessionStorage.setItem("aura_playbar_active", "true"); } catch (e) {}
+    this.updateUI();
 
     if (!this.audio.src || this.audio.src === "" || this.audio.src === window.location.href) {
       if (this.currentBook.audioUrl && this.currentBook.audioUrl.startsWith("http") && !this.currentBook.audioUrl.includes("pixabay")) {
@@ -1049,6 +1074,7 @@ class PlayerController {
 
   setVolume(val) {
     this.volume = val;
+    localStorage.setItem("aura_volume", val.toString());
     this.audio.volume = val;
     
     // Bottom player volume bar
@@ -1238,6 +1264,8 @@ class PlayerController {
     let isSessionActive = false;
     try { isSessionActive = sessionStorage.getItem("aura_playbar_active") === "true"; } catch (e) {}
 
+    if (!this.playerBar) this.playerBar = document.getElementById("audio-player-bar");
+
     if (!this.currentBook || this.isPlayerHiddenByLogout || !isSessionActive) {
       if (this.playerBar) this.playerBar.style.display = "none";
       const nowPlayingItem = document.getElementById("sidebar-now-playing-item");
@@ -1247,7 +1275,12 @@ class PlayerController {
       return;
     }
 
-    if (this.playerBar) this.playerBar.style.display = "flex";
+    if (this.playerBar) this.playerBar.style.display = "grid";
+
+    if (!this.titleLabel) this.titleLabel = document.querySelector(".player-track-title");
+    if (!this.authorLabel) this.authorLabel = document.querySelector(".player-track-author");
+    if (!this.chapterLabel) this.chapterLabel = document.querySelector(".player-track-chapter");
+    if (!this.coverImg) this.coverImg = document.querySelector(".player-thumbnail img");
 
     const chapter = this.getCurrentChapter();
     const chapterTitle = chapter ? chapter.title : "Chapter 1";
@@ -1256,10 +1289,10 @@ class PlayerController {
     if (this.coverImg) {
       let effectiveCover = this.currentBook.cover || (typeof this.currentBook.id === "number" ? `${getApiBase()}/api/audiobooks/${this.currentBook.id}/cover` : "assets/covers/default.png");
       this.coverImg.src = effectiveCover;
-      this.coverImg.alt = this.currentBook.title;
+      this.coverImg.alt = this.currentBook.title || "Audiobook";
     }
-    if (this.titleLabel) this.titleLabel.textContent = this.currentBook.title;
-    if (this.authorLabel) this.authorLabel.textContent = this.currentBook.author;
+    if (this.titleLabel) this.titleLabel.textContent = this.currentBook.title || "Untitled Book";
+    if (this.authorLabel) this.authorLabel.textContent = this.currentBook.author || "Unknown Author";
     if (this.chapterLabel) this.chapterLabel.textContent = chapterTitle;
 
     // Update Now Playing page chapter badge title

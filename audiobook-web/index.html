@@ -145,7 +145,7 @@
   </div>
 
   <!-- Persistent Bottom Audiobook Player -->
-  <footer id="audio-player-bar" role="contentinfo" aria-label="Audiobook Player Controls">
+  <footer id="audio-player-bar" style="display: none;" role="contentinfo" aria-label="Audiobook Player Controls">
     
     <!-- Left Panel: Book Cover & Chapter info -->
     <div class="player-track-info">
@@ -248,7 +248,7 @@
 
       <!-- Volume Controller -->
       <div class="volume-container">
-        <button class="player-btn player-btn-secondary" id="p-volume-mute" title="Mute Toggle" style="cursor: default;">
+        <button class="player-btn player-btn-secondary" id="p-volume-mute" title="Toggle Mute" style="cursor: pointer;">
           <i data-lucide="volume-2" id="p-volume-icon"></i>
         </button>
         <input 

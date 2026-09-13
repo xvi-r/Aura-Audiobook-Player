@@ -84,7 +84,9 @@ const initApp = () => {
     const sidebar = document.getElementById("sidebar");
     const mainContent = document.getElementById("main-content");
     if (!playerBar) return;
-    if (hideForNowPlaying || !player.currentBook || player.isPlayerHiddenByLogout) {
+    let isSessionActive = false;
+    try { isSessionActive = sessionStorage.getItem("aura_playbar_active") === "true"; } catch (e) {}
+    if (hideForNowPlaying || !player.currentBook || player.isPlayerHiddenByLogout || !isSessionActive) {
       playerBar.style.display = "none";
       if (sidebar) sidebar.style.paddingBottom = "20px";
       if (mainContent) mainContent.style.paddingBottom = "32px";
