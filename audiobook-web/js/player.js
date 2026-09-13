@@ -521,6 +521,7 @@ class PlayerController {
     this.currentBook = null;
     this.currentChapterIndex = 0;
     this.isPlayerHiddenByLogout = true;
+    try { sessionStorage.removeItem("aura_playbar_active"); } catch (e) {}
     const nowPlayingItem = document.getElementById("sidebar-now-playing-item");
     if (nowPlayingItem) {
       nowPlayingItem.style.display = "none";
@@ -535,6 +536,7 @@ class PlayerController {
     if (autoPlay) {
       this.isPlayerHiddenByLogout = false;
     }
+    try { sessionStorage.setItem("aura_playbar_active", "true"); } catch (e) {}
     if (this.currentBook && this.currentBook.id && String(this.currentBook.id) !== String(book.id)) {
       if (this.audio && !isNaN(this.audio.currentTime) && this.audio.currentTime > 0) {
         this.saveProgress(true);
@@ -1233,10 +1235,19 @@ class PlayerController {
   }
 
   updateUI() {
-    if (!this.currentBook || this.isPlayerHiddenByLogout) {
+    let isSessionActive = false;
+    try { isSessionActive = sessionStorage.getItem("aura_playbar_active") === "true"; } catch (e) {}
+
+    if (!this.currentBook || this.isPlayerHiddenByLogout || !isSessionActive) {
       if (this.playerBar) this.playerBar.style.display = "none";
+      const nowPlayingItem = document.getElementById("sidebar-now-playing-item");
+      if (nowPlayingItem && !isSessionActive) {
+        nowPlayingItem.style.display = "none";
+      }
       return;
     }
+
+    if (this.playerBar) this.playerBar.style.display = "flex";
 
     const chapter = this.getCurrentChapter();
     const chapterTitle = chapter ? chapter.title : "Chapter 1";
