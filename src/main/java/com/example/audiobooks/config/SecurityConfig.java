@@ -27,6 +27,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> {
                 })
+                .securityContext(context -> context
+                        .securityContextRepository(securityContextRepository())
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/",
