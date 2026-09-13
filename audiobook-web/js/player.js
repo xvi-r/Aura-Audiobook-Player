@@ -1276,6 +1276,10 @@ class PlayerController {
     }
 
     if (this.playerBar) this.playerBar.style.display = "grid";
+    const nowPlayingItem = document.getElementById("sidebar-now-playing-item");
+    if (nowPlayingItem) {
+      nowPlayingItem.style.display = "block";
+    }
 
     if (!this.titleLabel) this.titleLabel = document.querySelector(".player-track-title");
     if (!this.authorLabel) this.authorLabel = document.querySelector(".player-track-author");
