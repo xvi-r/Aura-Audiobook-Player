@@ -8,6 +8,8 @@ spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 
+# You can put any amount of time in here it's just how long you want a user's session to persist before needing to log in again
+server.servlet.session.cookie.max-age=30d
 
 spring.servlet.multipart.max-file-size=5GB
 spring.servlet.multipart.max-request-size=5GB
