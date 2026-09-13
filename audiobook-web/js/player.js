@@ -153,7 +153,6 @@ class PlayerController {
       } catch (err) {
         console.warn("Backend offline during player init, using local data.", err);
       }
-      if (!allBooks.length) allBooks = AUDIOBOOKS;
       if (allBooks.length > 0) initialBook = allBooks[0];
     }
 

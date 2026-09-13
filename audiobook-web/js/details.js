@@ -20,8 +20,7 @@ export async function renderDetails(bookId) {
       throw new Error(`HTTP ${response.status}`);
     }
   } catch (err) {
-    console.warn(`Spring Boot backend offline or not found, falling back to mock database for book: ${bookId}`, err);
-    book = AUDIOBOOKS.find((b) => String(b.id) === String(bookId));
+    console.warn(`Spring Boot backend notice for book: ${bookId}`, err);
   }
 
   if (!book && player.currentBook && String(player.currentBook.id) === String(bookId)) {
@@ -67,18 +66,12 @@ export async function renderDetails(bookId) {
     } catch (e) {}
   }
 
-  // Look up matching mock entry by ID or title
-  const mockMatch = AUDIOBOOKS.find((b) => 
-    String(b.id) === String(book.id) || 
-    (b.title && book.title && b.title.toLowerCase().trim() === book.title.toLowerCase().trim())
-  );
-
   // Map API entities to UI expectations
   book.progressSeconds = book.position ?? book.progressSeconds ?? 0;
   
-  book.chapters = book.chapters || (mockMatch ? mockMatch.chapters : []);
-  book.author = book.author || (mockMatch ? mockMatch.author : "Unknown Author");
-  book.narrator = book.narrator || (mockMatch ? mockMatch.narrator : "Digital EPUB Edition");
+  book.chapters = book.chapters || [];
+  book.author = book.author || "Unknown Author";
+  book.narrator = book.narrator || "Digital EPUB Edition";
 
   let coverUrl = null;
   if (book.cover && (book.cover.startsWith("http") || book.cover.startsWith("data:") || book.cover.startsWith("assets/"))) {
@@ -92,15 +85,15 @@ export async function renderDetails(bookId) {
   book.cover = coverUrl;
   
   // Year: Read directly from backend payload fields without inventing fake dates
-  const backendYear = book.releaseYear || book.publishedYear || book.year || book.date || (mockMatch ? (mockMatch.releaseYear || mockMatch.year) : "");
+  const backendYear = book.releaseYear || book.publishedYear || book.year || book.date || "";
   book.releaseYear = backendYear ? String(backendYear) : "";
 
   // Runtime / Length
-  const totalSecs = book.duration || (mockMatch ? mockMatch.runtimeSeconds : 0);
-  book.runtimeStr = book.runtime || (totalSecs ? player.formatTime(totalSecs) : (mockMatch ? mockMatch.runtime : "Unabridged"));
+  const totalSecs = book.duration || 0;
+  book.runtimeStr = book.runtime || (totalSecs ? player.formatTime(totalSecs) : "Unabridged");
 
   // Genres & Franchise Tagging
-  let rawGenres = book.genres || (mockMatch ? mockMatch.genres : []);
+  let rawGenres = book.genres || [];
   if (typeof rawGenres === "string") {
     rawGenres = rawGenres.split(",").map(g => g.trim());
   }
@@ -141,19 +134,15 @@ export async function renderDetails(bookId) {
     book.genres = ["Audiobook"];
   }
 
-  book.rating = book.rating || (mockMatch ? mockMatch.rating : 4.8);
-  book.narrator = book.narrator || (mockMatch ? mockMatch.narrator : "Narrator Unspecified");
-  book.description = book.description || (mockMatch ? mockMatch.description : "No description available.");
-  book.publisher = book.publisher || (mockMatch ? mockMatch.publisher : "Publisher Unknown");
+  book.rating = book.rating || 4.8;
+  book.narrator = book.narrator || "Narrator Unspecified";
+  book.description = book.description || "No description available.";
+  book.publisher = book.publisher || "Publisher Unknown";
 
   if (!book.chapters || !Array.isArray(book.chapters) || book.chapters.length === 0) {
-    if (mockMatch && mockMatch.chapters && mockMatch.chapters.length > 0) {
-      book.chapters = mockMatch.chapters;
-    } else {
-      book.chapters = [
-        { id: 1, title: book.title || "Full Audiobook", startTime: 0, duration: totalSecs || 0 }
-      ];
-    }
+    book.chapters = [
+      { id: 1, title: book.title || "Full Audiobook", startTimeMs: 0, duration: totalSecs || 0 }
+    ];
   }
 
   // Sort chapters in logical ascending order of start time
@@ -409,8 +398,7 @@ function setupDetailsEvents(book, container) {
         player.togglePlay();
       } else {
         // Load current book and start play (respecting existing progress)
-        player.loadBook(book, 0, book.progressSeconds || 0);
-        player.play();
+        player.loadBook(book, 0, book.progressSeconds || 0, true);
       }
       // Refresh page state (to update button icons and text)
       renderDetails(book.id);
@@ -938,13 +926,10 @@ export async function renderEbookDetails(ebookId) {
   const isbn = ebook.ISBN || ebook.isbn || "N/A";
   const audioBookId = ebook.audioBookId;
 
-  // Look up matching audiobook metadata strictly using audioBookId (e.g. 27), NOT E-Book ID (3)
-  if (audioBookId) {
-    const relatedAudiobook = AUDIOBOOKS.find((b) => String(b.id) === String(audioBookId));
-    if (relatedAudiobook) {
-      if (!ebook.author || ebook.author === "Unknown Author") ebook.author = relatedAudiobook.author;
-      if (!ebook.description) ebook.description = relatedAudiobook.description;
-    }
+  // Look up matching audiobook metadata if loaded in player
+  if (audioBookId && player.currentBook && String(player.currentBook.id) === String(audioBookId)) {
+    if (!ebook.author || ebook.author === "Unknown Author") ebook.author = player.currentBook.author;
+    if (!ebook.description) ebook.description = player.currentBook.description;
   }
 
   let coverUrl = `${API_BASE}/api/EBooks/${ebook.id}/cover`;

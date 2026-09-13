@@ -19,14 +19,10 @@ export const renderFavorites = async () => {
       const data = await response.json();
       if (Array.isArray(data)) {
         allBooks = data;
-      } else {
-        allBooks = JSON.parse(JSON.stringify(AUDIOBOOKS));
       }
-    } else {
-      allBooks = JSON.parse(JSON.stringify(AUDIOBOOKS));
     }
   } catch (err) {
-    allBooks = JSON.parse(JSON.stringify(AUDIOBOOKS));
+    console.warn("Favorites backend fetch notice:", err);
   }
 
   // Helper to format duration

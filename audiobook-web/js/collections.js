@@ -33,14 +33,10 @@ export const renderCollections = async (activeCollectionName = null) => {
       const data = await response.json();
       if (Array.isArray(data)) {
         allBooks = data;
-      } else {
-        allBooks = JSON.parse(JSON.stringify(AUDIOBOOKS));
       }
-    } else {
-      allBooks = JSON.parse(JSON.stringify(AUDIOBOOKS));
     }
   } catch (err) {
-    allBooks = JSON.parse(JSON.stringify(AUDIOBOOKS));
+    console.warn("Collections backend fetch notice:", err);
   }
 
   // Derive Auto Genre / Series / Franchise Map from books using series tags, franchises dictionary & explicit genres

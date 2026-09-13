@@ -49,10 +49,8 @@ export async function renderLibrary(searchQuery = "", isRecentlyPlayedView = fal
     console.warn("[Aura] Continue listening backend fetch notice:", clErr);
   }
 
-  // If backend query returned empty array for audiobooks, show fallback audiobooks
-  if (books.length === 0) {
-    books = JSON.parse(JSON.stringify(AUDIOBOOKS));
-  }
+  // No fallback to mock audiobooks
+
 
   // Helper to format duration in seconds to "Xh Ym"
   const formatDuration = (totalSecs) => {
