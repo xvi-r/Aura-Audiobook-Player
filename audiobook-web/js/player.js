@@ -436,8 +436,34 @@ class PlayerController {
     return this.parseSeconds(val);
   }
 
+  sortChapters(chapters) {
+    if (!Array.isArray(chapters)) return;
+    chapters.sort((a, b) => {
+      const getNum = (ch) => {
+        const val = ch.chapterNumber ?? ch.chapter_number ?? ch.id;
+        const n = parseInt(val, 10);
+        return isNaN(n) ? 0 : n;
+      };
+      const numA = getNum(a);
+      const numB = getNum(b);
+      if (numA > 0 && numB > 0 && numA !== numB) {
+        return numA - numB;
+      }
+      return this.getChapterStartTime(a) - this.getChapterStartTime(b);
+    });
+  }
+
   getChapterEndTime(ch, index = -1, chaptersList = null) {
     if (!ch) return Infinity;
+
+    // 1. Explicit end time point check
+    const val = ch.endTimeMs ?? ch.end_time_ms ?? ch.endMs ?? ch.endTime ?? ch.end ?? ch.end_time;
+    if (typeof val === "number" && !isNaN(val)) {
+      const parsedEnd = this.parseSeconds(val);
+      if (parsedEnd > 0) {
+        return parsedEnd;
+      }
+    }
 
     const list = chaptersList || (this.currentBook && Array.isArray(this.currentBook.chapters) ? this.currentBook.chapters : null);
 
@@ -446,12 +472,6 @@ class PlayerController {
       if (nextCh) {
         return this.getChapterStartTime(nextCh);
       }
-    }
-
-    // All fields are in seconds (despite "Ms" naming)
-    const val = ch.endTimeMs ?? ch.end_time_ms ?? ch.endMs ?? ch.endTime ?? ch.end ?? ch.end_time;
-    if (typeof val === "number" && !isNaN(val)) {
-      return this.parseSeconds(val);
     }
 
     const start = this.getChapterStartTime(ch);
@@ -471,9 +491,18 @@ class PlayerController {
   getChapterDuration(ch, index = -1, chaptersList = null) {
     if (!ch) return 0;
     const start = this.getChapterStartTime(ch);
-    const list = chaptersList || (this.currentBook && Array.isArray(this.currentBook.chapters) ? this.currentBook.chapters : null);
 
-    // 1. Next chapter boundary difference
+    // 1. Explicit end time point check
+    const endVal = ch.endTimeMs ?? ch.end_time_ms ?? ch.endMs ?? ch.endTime ?? ch.end ?? ch.end_time;
+    if (typeof endVal === "number" && !isNaN(endVal)) {
+      const parsedEnd = this.parseSeconds(endVal);
+      if (parsedEnd > start) {
+        return parsedEnd - start;
+      }
+    }
+
+    // 2. Next chapter boundary difference
+    const list = chaptersList || (this.currentBook && Array.isArray(this.currentBook.chapters) ? this.currentBook.chapters : null);
     if (list && index >= 0 && index < list.length - 1) {
       const nextCh = list[index + 1];
       if (nextCh) {
@@ -484,20 +513,10 @@ class PlayerController {
       }
     }
 
-    // 2. Explicit end time point check
-    const endVal = ch.endTimeMs ?? ch.end_time_ms ?? ch.endMs ?? ch.endTime ?? ch.end ?? ch.end_time;
-    if (typeof endVal === "number" && !isNaN(endVal)) {
-      const parsedEnd = this.parseSeconds(endVal);
-      if (parsedEnd > start) {
-        return parsedEnd - start;
-      }
-    }
-
     // 3. Raw duration field check
     const durVal = ch.durationMs ?? ch.duration_ms ?? ch.duration;
     if (typeof durVal === "number" && durVal > 0) {
       const parsedDur = this.parseSeconds(durVal);
-      // If duration field holds an absolute end timestamp point (> start time), calculate delta
       if (parsedDur > start && start > 0) {
         return parsedDur - start;
       }
@@ -572,18 +591,47 @@ class PlayerController {
       nowPlayingItem.style.display = "block";
     }
 
-    // Determine target seek time (Check progressResponse, position, progress.position, progressSeconds)
+    // Determine target seek time (Safely checking explicit argument, object properties, localStorage, and DB)
     let targetTime = 0;
-    if (elapsedBookSeconds !== null && elapsedBookSeconds !== undefined) {
-      targetTime = elapsedBookSeconds;
-    } else if (book.progressResponse && book.progressResponse.position !== undefined && book.progressResponse.position !== null) {
-      targetTime = parseFloat(book.progressResponse.position);
-    } else if (book.position !== undefined && book.position !== null) {
-      targetTime = parseFloat(book.position);
-    } else if (book.progress && book.progress.position !== undefined && book.progress.position !== null) {
-      targetTime = parseFloat(book.progress.position);
-    } else if (book.progressSeconds !== undefined && book.progressSeconds !== null) {
-      targetTime = parseFloat(book.progressSeconds);
+
+    // Check localStorage position
+    let localPos = 0;
+    if (book.id) {
+      try {
+        const stored = localStorage.getItem(`aura_progress_${book.id}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed.position === "number" && parsed.position > 0) {
+            localPos = parsed.position;
+          }
+        }
+      } catch (e) {}
+    }
+
+    const candidateTimes = [];
+    if (typeof elapsedBookSeconds === "number" && elapsedBookSeconds > 0) candidateTimes.push(elapsedBookSeconds);
+    if (book.progressResponse && book.progressResponse.position !== undefined && book.progressResponse.position !== null) {
+      const p = parseFloat(book.progressResponse.position);
+      if (p > 0) candidateTimes.push(p);
+    }
+    if (book.position !== undefined && book.position !== null) {
+      const p = parseFloat(book.position);
+      if (p > 0) candidateTimes.push(p);
+    }
+    if (book.progress && book.progress.position !== undefined && book.progress.position !== null) {
+      const p = parseFloat(book.progress.position);
+      if (p > 0) candidateTimes.push(p);
+    }
+    if (book.progressSeconds !== undefined && book.progressSeconds !== null) {
+      const p = parseFloat(book.progressSeconds);
+      if (p > 0) candidateTimes.push(p);
+    }
+    if (localPos > 0) candidateTimes.push(localPos);
+
+    if (candidateTimes.length > 0) {
+      targetTime = Math.max(...candidateTimes);
+    } else if (book.isExplicitReset) {
+      targetTime = 0;
     } else if (book.chapters && book.chapters[chapterIndex]) {
       targetTime = this.getChapterStartTime(book.chapters[chapterIndex]);
     }
@@ -608,20 +656,20 @@ class PlayerController {
         .catch(err => console.warn("[Aura] Could not fetch chapters for book:", err));
     }
 
-    // Fetch freshest progress from backend if not already embedded
-    if (book.id && elapsedBookSeconds === null && book.progressResponse === undefined && book.position === undefined) {
+    // Always fetch freshest progress from backend to sync server state if available
+    if (book.id) {
       this.fetchProgress(book.id).then(prog => {
         if (prog && prog.position !== undefined && prog.position !== null) {
           const freshPos = parseFloat(prog.position);
           if (!isNaN(freshPos) && freshPos >= 0) {
-            book.position = freshPos;
-            book.progressSeconds = freshPos;
+            book.position = Math.max(book.position || 0, freshPos);
+            book.progressSeconds = Math.max(book.progressSeconds || 0, freshPos);
             book.completed = prog.completed;
-            this.pendingTargetTime = freshPos;
+            this.pendingTargetTime = Math.max(this.pendingTargetTime || 0, freshPos);
             this.currentChapterIndex = this.getCurrentChapterIndex();
             this.updateUI();
             if (this.currentBook && String(this.currentBook.id) === String(book.id)) {
-              if (Math.abs((this.audio.currentTime || 0) - freshPos) > 2) {
+              if (freshPos > (this.audio.currentTime || 0) + 2) {
                 try {
                   this.audio.currentTime = freshPos;
                   this.updatePlaybackProgressUI();
@@ -649,9 +697,9 @@ class PlayerController {
     const currentSrc = this.audio.src || "";
     const needsNewSource = !currentSrc || currentSrc === window.location.href || !currentSrc.includes(audioSrc);
 
-    // Auto-sort chapters logically in ascending order of start time
+    // Auto-sort chapters logically in ascending order of chapter number / start time
     if (book.chapters && Array.isArray(book.chapters)) {
-      book.chapters.sort((a, b) => this.getChapterStartTime(a) - this.getChapterStartTime(b));
+      this.sortChapters(book.chapters);
     }
 
     const doSeekAndPlay = () => {
@@ -899,16 +947,32 @@ class PlayerController {
 
   async fetchProgress(audiobookId) {
     if (!audiobookId) return null;
+    let localResult = null;
+    try {
+      const stored = localStorage.getItem(`aura_progress_${audiobookId}`);
+      if (stored) {
+        localResult = JSON.parse(stored);
+      }
+    } catch (e) {}
+
     const API_BASE = getApiBase();
     try {
       const response = await fetchWithTimeout(`${API_BASE}/api/audiobooks/${audiobookId}/progress`, {}, 3000);
       if (response.ok) {
-        return await response.json();
+        const dbResult = await response.json();
+        if (dbResult && dbResult.position !== undefined && dbResult.position !== null) {
+          const dbPos = parseFloat(dbResult.position);
+          const localPos = localResult && typeof localResult.position === "number" ? localResult.position : 0;
+          if (localPos > dbPos) {
+            dbResult.position = localPos;
+          }
+          return dbResult;
+        }
       }
     } catch (e) {
       console.warn(`[Aura] Could not fetch progress for book #${audiobookId}:`, e);
     }
-    return null;
+    return localResult;
   }
 
   async saveProgress(force = false) {
@@ -930,6 +994,16 @@ class PlayerController {
     // Update in-memory representation
     this.currentBook.progressSeconds = positionInSeconds;
     this.currentBook.position = positionInSeconds;
+    this.currentBook.completed = isCompleted;
+
+    // Instant client-side persistence in localStorage
+    try {
+      localStorage.setItem(`aura_progress_${this.currentBook.id}`, JSON.stringify({
+        position: positionInSeconds,
+        completed: isCompleted,
+        timestamp: Date.now()
+      }));
+    } catch (e) {}
     this.currentBook.completed = isCompleted;
 
     // Synchronously update local storage every time position changes (0ms delay on reload)

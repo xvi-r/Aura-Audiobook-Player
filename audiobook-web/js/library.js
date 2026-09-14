@@ -307,7 +307,7 @@ function setupLibraryEvents(container, books, searchQuery = "") {
       const id = playBtn.getAttribute("data-id");
       const book = books.find((b) => String(b.id) === String(id));
       if (book) {
-        player.loadBook(book, 0, book.progressSeconds || 0, true);
+        player.loadBook(book, 0, book.progressSeconds ?? book.position ?? null, true);
       }
       return;
     }

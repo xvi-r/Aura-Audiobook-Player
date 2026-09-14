@@ -39,27 +39,37 @@ export async function renderDetails(bookId) {
 
   book.id = book.id ?? book.bookId ?? book._id ?? book.audiobookId ?? bookId;
 
-  // Parse embedded progressResponse or fetch freshest progress
-  if (book.progressResponse !== undefined) {
-    if (book.progressResponse && book.progressResponse.position !== undefined && book.progressResponse.position !== null) {
-      book.position = parseFloat(book.progressResponse.position);
-      book.progressSeconds = parseFloat(book.progressResponse.position);
-      book.completed = !!book.progressResponse.completed;
-    } else {
-      book.position = 0;
-      book.progressSeconds = 0;
-      book.completed = false;
+  // Parse progress safely from localStorage, embedded progressResponse, object properties, or DB
+  let localPos = 0;
+  try {
+    const stored = localStorage.getItem(`aura_progress_${book.id}`);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed.position === "number" && parsed.position > 0) {
+        localPos = parsed.position;
+      }
     }
+  } catch (e) {}
+
+  let objPos = 0;
+  if (book.progressResponse && book.progressResponse.position !== undefined && book.progressResponse.position !== null) {
+    objPos = parseFloat(book.progressResponse.position);
+    book.completed = !!book.progressResponse.completed;
   } else if (book.position !== undefined && book.position !== null) {
-    book.progressSeconds = parseFloat(book.position);
-  } else {
+    objPos = parseFloat(book.position);
+  } else if (book.progressSeconds !== undefined && book.progressSeconds !== null) {
+    objPos = parseFloat(book.progressSeconds);
+  }
+
+  let bestPos = Math.max(localPos, objPos);
+
+  if (bestPos === 0 && book.id) {
     try {
       const progRes = await fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}/progress`, {}, 2500);
       if (progRes.ok) {
         const progData = await progRes.json();
         if (progData && progData.position !== undefined && progData.position !== null) {
-          book.position = parseFloat(progData.position);
-          book.progressSeconds = parseFloat(progData.position);
+          bestPos = Math.max(bestPos, parseFloat(progData.position));
           book.completed = progData.completed;
         }
       }
@@ -67,7 +77,8 @@ export async function renderDetails(bookId) {
   }
 
   // Map API entities to UI expectations
-  book.progressSeconds = book.position ?? book.progressSeconds ?? 0;
+  book.position = bestPos;
+  book.progressSeconds = bestPos;
   
   book.chapters = book.chapters || [];
   book.author = book.author || "Unknown Author";
@@ -398,7 +409,7 @@ function setupDetailsEvents(book, container) {
         player.togglePlay();
       } else {
         // Load current book and start play (respecting existing progress)
-        player.loadBook(book, 0, book.progressSeconds || 0, true);
+        player.loadBook(book, 0, book.progressSeconds ?? book.position ?? null, true);
       }
       // Refresh page state (to update button icons and text)
       renderDetails(book.id);
@@ -431,6 +442,10 @@ function setupDetailsEvents(book, container) {
       book.progressSeconds = 0;
       book.position = 0;
       book.completed = false;
+      book.isExplicitReset = true;
+      try {
+        localStorage.removeItem(`aura_progress_${book.id}`);
+      } catch (e) {}
       const API_BASE = getApiBase();
       try {
         await fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}/progress`, {

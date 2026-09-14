@@ -126,7 +126,7 @@ export const renderFavorites = async () => {
       const id = btn.dataset.id;
       const book = books.find(b => b.id.toString() === id.toString());
       if (book) {
-        player.loadBook(book, 0, book.progressSeconds || 0, true);
+        player.loadBook(book, 0, book.progressSeconds ?? book.position ?? null, true);
       }
     });
   });
