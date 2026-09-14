@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aura Mini Player</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta name="theme-color" content="#0d1118">
+
+  <!-- Google Fonts - Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- App Stylesheets -->
+  <link rel="stylesheet" href="/css/variables.css">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/player.css">
+  <link rel="stylesheet" href="/css/popout.css">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="popout-window-body">
+
+  <div class="popout-player-container" id="popout-container">
+    <!-- Main Content Body -->
+    <main class="popout-body">
+      <!-- Artwork -->
+      <div class="popout-artwork-wrapper">
+        <img id="popout-cover" src="assets/covers/default.png" alt="Cover" />
+      </div>
+
+      <!-- Metadata -->
+      <div class="popout-meta">
+        <div class="popout-track-title" id="popout-title">Untitled Book</div>
+        <div class="popout-track-author" id="popout-author">Unknown Author</div>
+        <div class="popout-chapter-badge">
+          <span class="popout-chapter-title" id="popout-chapter">Chapter 1</span>
+        </div>
+      </div>
+
+      <!-- Scrubber Timeline -->
+      <div class="popout-timeline-container">
+        <span class="popout-time-label" id="popout-time-elapsed">00:00</span>
+        <div class="popout-timeline-slider-wrapper" id="popout-slider-wrapper">
+          <input 
+            type="range" 
+            id="popout-timeline" 
+            class="timeline-slider" 
+            min="0" 
+            max="100" 
+            step="any"
+            value="0"
+            aria-label="Playback Progress"
+          />
+        </div>
+        <span class="popout-time-label" id="popout-time-duration">00:00</span>
+        <button class="popout-view-mode-btn" id="popout-view-mode-btn" title="Toggle Book / Chapter View">
+          <i data-lucide="split"></i>
+        </button>
+      </div>
+
+      <!-- Playback Buttons -->
+      <div class="popout-controls">
+        <button class="player-btn player-btn-secondary" id="popout-prev-chapter" title="Previous Chapter">
+          <i data-lucide="skip-back"></i>
+        </button>
+        <button class="player-btn player-btn-secondary" id="popout-rewind" title="Rewind 15 seconds">
+          <i data-lucide="rotate-ccw"></i>
+        </button>
+        <button class="player-btn player-btn-play" id="popout-play-pause" title="Play / Pause">
+          <i data-lucide="play" id="popout-play-icon"></i>
+        </button>
+        <button class="player-btn player-btn-secondary" id="popout-forward" title="Skip forward 30 seconds">
+          <i data-lucide="rotate-cw"></i>
+        </button>
+        <button class="player-btn player-btn-secondary" id="popout-next-chapter" title="Next Chapter">
+          <i data-lucide="skip-forward"></i>
+        </button>
+      </div>
+    </main>
+
+    <!-- Utilities Toolbar -->
+    <footer class="popout-utilities">
+      <div class="popout-util-group">
+        <!-- Chapters Dropdown -->
+        <div class="util-btn" id="popout-chapters-btn" title="Select Chapter" role="button" tabindex="0">
+          <i data-lucide="list"></i>
+          <span id="popout-chapters-label">Chapters</span>
+          <div class="util-popup util-popup-chapters" id="popout-chapters-popup"></div>
+        </div>
+
+        <!-- Speed Dropdown -->
+        <div class="util-btn" id="popout-speed-btn" title="Playback Speed" role="button" tabindex="0">
+          <i data-lucide="gauge"></i>
+          <span id="popout-speed-label">1x</span>
+          <div class="util-popup" id="popout-speed-popup">
+            <button class="popup-item active" data-rate="1.0">1x</button>
+            <button class="popup-item" data-rate="1.25">1.25x</button>
+            <button class="popup-item" data-rate="1.5">1.5x</button>
+            <button class="popup-item" data-rate="2.0">2x</button>
+          </div>
+        </div>
+
+        <!-- Sleep Timer Dropdown -->
+        <div class="util-btn" id="popout-sleep-btn" title="Sleep Timer" role="button" tabindex="0">
+          <i data-lucide="timer"></i>
+          <span id="popout-sleep-label">Sleep</span>
+          <div class="util-popup" id="popout-sleep-popup">
+            <button class="popup-item active" data-mins="0">Off</button>
+            <button class="popup-item" data-mins="10">10m</button>
+            <button class="popup-item" data-mins="15">15m</button>
+            <button class="popup-item" data-mins="30">30m</button>
+            <button class="popup-item" data-mins="45">45m</button>
+            <button class="popup-item" data-mins="60">60m</button>
+            <button class="popup-item" data-mins="chapter">End of Ch.</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Volume Controller -->
+      <div class="popout-volume-container">
+        <button class="popout-volume-btn" id="popout-volume-mute" title="Toggle Mute">
+          <i data-lucide="volume-2" id="popout-volume-icon"></i>
+        </button>
+        <input 
+          type="range" 
+          id="popout-volume" 
+          class="volume-slider" 
+          min="0" 
+          max="1" 
+          step="any" 
+          value="0.8"
+          aria-label="Volume"
+        />
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="/js/popout_standalone.js"></script>
+</body>
+</html>
