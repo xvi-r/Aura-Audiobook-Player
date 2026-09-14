@@ -1,5 +1,10 @@
 /* Immersive Now Playing View - Spotify & Audible Hybrid */
 
+/* Force-hide persistent bottom player bar while on Now Playing page */
+#app-container:has(.np-player-container) ~ #audio-player-bar {
+  display: none !important;
+}
+
 .np-player-container {
   display: flex;
   justify-content: center;
@@ -28,6 +33,47 @@
   opacity: 0.65;
   pointer-events: none;
   transition: background 1.5s ease-in-out;
+}
+
+/* Top Action Bar (Mini Player / Pop-out trigger) */
+.np-top-action-bar {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.np-action-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  height: 32px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-quick);
+}
+
+.np-action-pill-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-main);
+  border-color: var(--accent-primary);
+}
+
+.np-action-pill-btn i,
+.np-action-pill-btn svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-primary);
 }
 
 /* Centered Player Card Content */

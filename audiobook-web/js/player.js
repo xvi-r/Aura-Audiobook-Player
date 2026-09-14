@@ -1,6 +1,7 @@
 // Audiobook Playback Engine (HTML5 Media Player)
 import { AUDIOBOOKS } from "./data.js";
 import { getApiBase, fetchWithTimeout } from "./config.js";
+import { popoutManager } from "./popout.js";
 
 class PlayerController {
   constructor() {
@@ -184,9 +185,20 @@ class PlayerController {
     this.chaptersBtn = document.getElementById("p-chapters-btn");
     this.chaptersLabel = document.getElementById("p-chapters-label");
     this.chaptersPopup = document.getElementById("p-chapters-popup");
+
+    this.popoutBtn = document.getElementById("p-popout-btn");
   }
 
   attachEventListeners() {
+    // Pop-out Mini Player
+    if (this.popoutBtn) {
+      this.popoutBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        popoutManager.toggle();
+      });
+    }
+
     // Playback events
     this.playBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -1275,6 +1287,8 @@ class PlayerController {
     if (window.lucide) {
       window.lucide.createIcons();
     }
+
+    popoutManager.update();
   }
 
   toggleMute() {
@@ -1315,6 +1329,8 @@ class PlayerController {
         });
       }
     });
+
+    popoutManager.update();
   }
 
   setSleepTimer(mins) {
@@ -1441,7 +1457,10 @@ class PlayerController {
       return;
     }
 
-    if (this.playerBar) this.playerBar.style.display = "grid";
+    const isNowPlaying = window.location.pathname === "/now-playing" || window.location.hash === "#now-playing" || window.location.hash.startsWith("#now-playing");
+    if (this.playerBar) {
+      this.playerBar.style.display = isNowPlaying ? "none" : "grid";
+    }
     const nowPlayingItem = document.getElementById("sidebar-now-playing-item");
     if (nowPlayingItem) {
       nowPlayingItem.style.display = "block";
@@ -1484,6 +1503,9 @@ class PlayerController {
     // Init volume fill
     this.setVolume(this.volume);
     this.setPlaybackSpeed(this.playbackSpeed);
+
+    // Sync active pop-out player if open
+    popoutManager.update();
   }
 
   toggleTimeDisplayMode() {
@@ -1580,6 +1602,7 @@ class PlayerController {
     }
 
     this.updateTimelineModeUI();
+    popoutManager.updateProgress();
   }
 
   updatePlayStateUI() {
@@ -1621,6 +1644,8 @@ class PlayerController {
     if (window.lucide) {
       window.lucide.createIcons();
     }
+
+    popoutManager.update();
   }
 
   updateSleepTimerUI() {
@@ -1652,6 +1677,8 @@ class PlayerController {
         });
       }
     });
+
+    popoutManager.update();
   }
 
   // Decoupled communication via Event Bus

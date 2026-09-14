@@ -2,6 +2,7 @@
 import { player } from "./player.js";
 import { getApiBase } from "./config.js";
 import { openEpubReader } from "./epub_reader.js";
+import { popoutManager } from "./popout.js";
 
 // Listen for track changes to auto-update view only if book changes or placeholder active
 window.addEventListener("audiobook-track-change", () => {
@@ -64,6 +65,14 @@ export const renderNowPlaying = () => {
 
   mainContent.innerHTML = `
     <div class="np-player-container fade-in">
+      <!-- Top Action Bar -->
+      <div class="np-top-action-bar">
+        <button class="np-action-pill-btn" id="np-popout-btn" title="Pop out into Mini Player">
+          <i data-lucide="picture-in-picture-2"></i>
+          <span>Mini Player</span>
+        </button>
+      </div>
+
       <div class="np-player-card">
         <!-- 1. Large Crisp Artwork -->
         <div class="np-artwork-wrapper">
@@ -442,6 +451,15 @@ const setupNPEventListeners = (book, coverUrl) => {
         item.classList.add("active");
         sleepBtn.classList.remove("active");
       });
+    });
+  }
+
+  // Pop-out Mini Player button
+  const popoutBtn = document.getElementById("np-popout-btn");
+  if (popoutBtn) {
+    popoutBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      popoutManager.toggle();
     });
   }
 
