@@ -59,7 +59,14 @@ class PopoutManager {
       `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no`
     );
     if (this.standaloneWindow) {
+      try {
+        this.standaloneWindow.player = player;
+      } catch (e) {}
       this.standaloneWindow.focus();
+      this.standaloneWindow.addEventListener("DOMContentLoaded", () => {
+        setTimeout(() => this.update(), 50);
+      });
+      setTimeout(() => this.update(), 150);
     }
   }
 
@@ -90,7 +97,10 @@ class PopoutManager {
         <main class="popout-body">
           <!-- Artwork -->
           <div class="popout-artwork-wrapper">
-            <img id="popout-cover" src="assets/covers/default.png" alt="Cover" />
+            <img id="popout-cover" src="" alt="Cover" style="display: none;" />
+            <div id="popout-cover-placeholder" class="popout-cover-placeholder">
+              <i data-lucide="headphones"></i>
+            </div>
           </div>
 
           <!-- Metadata -->
@@ -382,98 +392,125 @@ class PopoutManager {
     });
   }
 
+  getActiveDocs() {
+    const docs = [];
+    if (this.pipWindow && !this.pipWindow.closed) {
+      try {
+        if (this.pipWindow.document) docs.push(this.pipWindow.document);
+      } catch (e) {}
+    }
+    if (this.standaloneWindow && !this.standaloneWindow.closed) {
+      try {
+        if (this.standaloneWindow.document) docs.push(this.standaloneWindow.document);
+      } catch (e) {}
+    }
+    return docs;
+  }
+
   update() {
-    if (!this.pipWindow || this.pipWindow.closed) return;
-    const doc = this.pipWindow.document;
+    const docs = this.getActiveDocs();
+    if (docs.length === 0) return;
     const book = player.currentBook;
     if (!book) return;
 
-    // 1. Cover Artwork
-    const coverEl = doc.getElementById("popout-cover");
-    if (coverEl) {
-      const effectiveCover = book.cover || (typeof book.id === "number" ? `${getApiBase()}/api/audiobooks/${book.id}/cover` : "assets/covers/default.png");
-      if (coverEl.src !== effectiveCover) {
-        coverEl.src = effectiveCover;
-        coverEl.alt = book.title || "Cover";
+    docs.forEach(doc => {
+      // 1. Cover Artwork
+      const coverEl = doc.getElementById("popout-cover");
+      const placeholderEl = doc.getElementById("popout-cover-placeholder");
+      if (coverEl) {
+        const effectiveCover = book.cover || book.coverPath || (typeof book.id === "number" ? `${getApiBase()}/api/audiobooks/${book.id}/cover` : "");
+        if (effectiveCover) {
+          coverEl.src = effectiveCover;
+          coverEl.alt = book.title || "Cover";
+          coverEl.style.display = "block";
+          if (placeholderEl) placeholderEl.style.display = "none";
+          coverEl.onerror = () => {
+            coverEl.style.display = "none";
+            if (placeholderEl) placeholderEl.style.display = "flex";
+          };
+        } else {
+          coverEl.style.display = "none";
+          if (placeholderEl) placeholderEl.style.display = "flex";
+        }
       }
-    }
 
-    // 2. Track Metadata
-    const titleEl = doc.getElementById("popout-title");
-    if (titleEl) titleEl.textContent = book.title || "Untitled Book";
+      // 2. Track Metadata
+      const titleEl = doc.getElementById("popout-title");
+      if (titleEl) titleEl.textContent = book.title || "Untitled Book";
 
-    const authorEl = doc.getElementById("popout-author");
-    if (authorEl) authorEl.textContent = book.author || "Unknown Author";
+      const authorEl = doc.getElementById("popout-author");
+      if (authorEl) authorEl.textContent = book.author || "Unknown Author";
 
-    const chapter = player.getCurrentChapter();
-    const chapterTitleEl = doc.getElementById("popout-chapter");
-    if (chapterTitleEl) chapterTitleEl.textContent = chapter ? (chapter.title || chapter.name || "Chapter 1") : "Chapter 1";
+      const chapter = player.getCurrentChapter();
+      const chapterTitleEl = doc.getElementById("popout-chapter");
+      if (chapterTitleEl) chapterTitleEl.textContent = chapter ? (chapter.title || chapter.name || "Chapter 1") : "Chapter 1";
 
-    // 3. Play / Pause button icon
-    const playBtn = doc.getElementById("popout-play-pause");
-    if (playBtn) {
-      const iconName = player.isPlaying ? "pause" : "play";
-      playBtn.innerHTML = `<i data-lucide="${iconName}"></i>`;
-    }
+      // 3. Play / Pause button icon
+      const playBtn = doc.getElementById("popout-play-pause");
+      if (playBtn) {
+        const iconName = player.isPlaying ? "pause" : "play";
+        playBtn.innerHTML = `<i data-lucide="${iconName}"></i>`;
+      }
 
-    // 5. Speed Label and Active Item
-    const speedLabel = doc.getElementById("popout-speed-label");
-    if (speedLabel) speedLabel.textContent = `${player.playbackSpeed}x`;
-    doc.querySelectorAll("#popout-speed-popup .popup-item").forEach(item => {
-      const rate = parseFloat(item.getAttribute("data-rate"));
-      if (rate === player.playbackSpeed) item.classList.add("active");
-      else item.classList.remove("active");
+      // 4. Speed Label and Active Item
+      const speedLabel = doc.getElementById("popout-speed-label");
+      if (speedLabel) speedLabel.textContent = `${player.playbackSpeed}x`;
+      doc.querySelectorAll("#popout-speed-popup .popup-item").forEach(item => {
+        const rate = parseFloat(item.getAttribute("data-rate"));
+        if (rate === player.playbackSpeed) item.classList.add("active");
+        else item.classList.remove("active");
+      });
+
+      // 5. Sleep Timer Label
+      const sleepLabel = doc.getElementById("popout-sleep-label");
+      if (sleepLabel) {
+        if (player.sleepAtEndOfChapter) {
+          sleepLabel.textContent = "Ch. End";
+        } else if (player.sleepTimerRemaining > 0) {
+          const m = Math.floor(player.sleepTimerRemaining / 60);
+          const s = player.sleepTimerRemaining % 60;
+          sleepLabel.textContent = `${m}:${s < 10 ? "0" : ""}${s}`;
+        } else {
+          sleepLabel.textContent = "Sleep";
+        }
+      }
+
+      // 6. Volume Slider & Mute Icon
+      const volumeSlider = doc.getElementById("popout-volume");
+      if (volumeSlider) {
+        volumeSlider.value = player.volume;
+        player.updateSliderFill(volumeSlider, player.volume * 100);
+      }
+      const volumeIcon = doc.getElementById("popout-volume-icon");
+      if (volumeIcon) {
+        let iconName = "volume-2";
+        if (player.volume === 0) iconName = "volume-x";
+        else if (player.volume < 0.3) iconName = "volume";
+        else if (player.volume < 0.7) iconName = "volume-1";
+        volumeIcon.setAttribute("data-lucide", iconName);
+      }
+
+      // 7. View Mode Button Icon
+      const viewModeBtn = doc.getElementById("popout-view-mode-btn");
+      if (viewModeBtn) {
+        const isChapter = player.timelineMode === "chapter";
+        viewModeBtn.innerHTML = `<i data-lucide="${isChapter ? 'split' : 'book-open'}"></i>`;
+        viewModeBtn.setAttribute("title", `Toggle Book / Chapter View (${isChapter ? 'Chapter View' : 'Book View'})`);
+      }
+
+      // Re-create icons inside document
+      if (window.lucide) {
+        window.lucide.createIcons({ root: doc });
+      }
     });
 
-    // 6. Sleep Timer Label
-    const sleepLabel = doc.getElementById("popout-sleep-label");
-    if (sleepLabel) {
-      if (player.sleepAtEndOfChapter) {
-        sleepLabel.textContent = "Ch. End";
-      } else if (player.sleepTimerRemaining > 0) {
-        const m = Math.floor(player.sleepTimerRemaining / 60);
-        const s = player.sleepTimerRemaining % 60;
-        sleepLabel.textContent = `${m}:${s < 10 ? "0" : ""}${s}`;
-      } else {
-        sleepLabel.textContent = "Sleep";
-      }
-    }
-
-    // 7. Volume Slider & Mute Icon
-    const volumeSlider = doc.getElementById("popout-volume");
-    if (volumeSlider) {
-      volumeSlider.value = player.volume;
-      player.updateSliderFill(volumeSlider, player.volume * 100);
-    }
-    const volumeIcon = doc.getElementById("popout-volume-icon");
-    if (volumeIcon) {
-      let iconName = "volume-2";
-      if (player.volume === 0) iconName = "volume-x";
-      else if (player.volume < 0.3) iconName = "volume";
-      else if (player.volume < 0.7) iconName = "volume-1";
-      volumeIcon.setAttribute("data-lucide", iconName);
-    }
-
-    // 8. View Mode Button Icon
-    const viewModeBtn = doc.getElementById("popout-view-mode-btn");
-    if (viewModeBtn) {
-      const isChapter = player.timelineMode === "chapter";
-      viewModeBtn.innerHTML = `<i data-lucide="${isChapter ? 'split' : 'book-open'}"></i>`;
-      viewModeBtn.setAttribute("title", `Toggle Book / Chapter View (${isChapter ? 'Chapter View' : 'Book View'})`);
-    }
-
-    // Update Progress Bar
     this.updateProgress();
-
-    // Re-create icons inside PiP document
-    if (window.lucide) {
-      window.lucide.createIcons({ root: doc });
-    }
   }
 
   updateProgress() {
-    if (!this.pipWindow || this.pipWindow.closed || this.isSeeking) return;
-    const doc = this.pipWindow.document;
+    if (this.isSeeking) return;
+    const docs = this.getActiveDocs();
+    if (docs.length === 0) return;
     const book = player.currentBook;
     if (!book) return;
 
@@ -499,27 +536,29 @@ class PopoutManager {
       }
     }
 
-    const timeline = doc.getElementById("popout-timeline");
-    if (timeline) {
-      timeline.max = curMax;
-      timeline.value = curVal;
-      const percent = Math.min(100, Math.max(0, (curVal / curMax) * 100));
-      player.updateSliderFill(timeline, percent);
-    }
-
-    const elapsedLabel = doc.getElementById("popout-time-elapsed");
-    if (elapsedLabel) {
-      let displayTime = player.formatTime(curVal);
-      if (player.showTimeRemaining) {
-        displayTime = `-${player.formatTime(Math.max(0, curMax - curVal))}`;
+    docs.forEach(doc => {
+      const timeline = doc.getElementById("popout-timeline");
+      if (timeline) {
+        timeline.max = curMax;
+        timeline.value = curVal;
+        const percent = Math.min(100, Math.max(0, (curVal / curMax) * 100));
+        player.updateSliderFill(timeline, percent);
       }
-      elapsedLabel.textContent = displayTime;
-    }
 
-    const durationLabel = doc.getElementById("popout-time-duration");
-    if (durationLabel) {
-      durationLabel.textContent = player.formatTime(curMax);
-    }
+      const elapsedLabel = doc.getElementById("popout-time-elapsed");
+      if (elapsedLabel) {
+        let displayTime = player.formatTime(curVal);
+        if (player.showTimeRemaining) {
+          displayTime = `-${player.formatTime(Math.max(0, curMax - curVal))}`;
+        }
+        elapsedLabel.textContent = displayTime;
+      }
+
+      const durationLabel = doc.getElementById("popout-time-duration");
+      if (durationLabel) {
+        durationLabel.textContent = player.formatTime(curMax);
+      }
+    });
   }
 }
 

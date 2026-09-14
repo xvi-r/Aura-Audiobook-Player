@@ -1825,3 +1825,6 @@ function itemActive(itemMins, activeMins) {
 }
 
 export const player = new PlayerController();
+if (typeof window !== "undefined") {
+  window.player = player;
+}

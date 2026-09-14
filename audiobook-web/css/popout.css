@@ -66,6 +66,23 @@ body.popout-window-body {
   object-fit: cover;
 }
 
+.popout-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+}
+
+.popout-cover-placeholder i,
+.popout-cover-placeholder svg {
+  width: 48px;
+  height: 48px;
+  opacity: 0.5;
+}
+
 /* Track Metadata */
 .popout-meta {
   display: flex;

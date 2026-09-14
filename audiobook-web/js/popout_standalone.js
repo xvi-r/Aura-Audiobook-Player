@@ -1,5 +1,12 @@
 // Standalone Popup Window Controller for popout.html
-const p = window.opener && window.opener.player ? window.opener.player : null;
+
+function getPlayer() {
+  if (window.opener && window.opener.player) return window.opener.player;
+  if (window.player) return window.player;
+  return null;
+}
+
+let p = getPlayer();
 
 function formatTime(seconds) {
   if (isNaN(seconds) || seconds < 0) return "00:00";
@@ -21,10 +28,27 @@ function init() {
     window.lucide.createIcons();
   }
 
+  p = getPlayer();
   if (!p) {
-    console.warn("[Aura Pop-out] Main window player reference not detected.");
+    let attempts = 0;
+    const retryTimer = setInterval(() => {
+      attempts++;
+      p = getPlayer();
+      if (p) {
+        clearInterval(retryTimer);
+        setupPlayer();
+      } else if (attempts >= 30) {
+        clearInterval(retryTimer);
+        console.warn("[Aura Pop-out] Main window player reference not detected after retries.");
+      }
+    }, 100);
     return;
   }
+
+  setupPlayer();
+}
+
+function setupPlayer() {
 
   // Play / Pause
   document.getElementById("popout-play-pause")?.addEventListener("click", () => {
@@ -161,6 +185,7 @@ function init() {
 }
 
 function populateChapters() {
+  if (!p) p = getPlayer();
   const popup = document.getElementById("popout-chapters-popup");
   if (!popup || !p || !p.currentBook) return;
 
@@ -194,14 +219,31 @@ function populateChapters() {
 }
 
 function update() {
+  if (!p) p = getPlayer();
   if (!p || !p.currentBook) return;
   const book = p.currentBook;
 
   // Cover
   const coverEl = document.getElementById("popout-cover");
+  const placeholderEl = document.getElementById("popout-cover-placeholder");
   if (coverEl) {
-    const coverSrc = book.cover || (typeof book.id === "number" ? `/api/audiobooks/${book.id}/cover` : "assets/covers/default.png");
-    coverEl.src = coverSrc;
+    let coverSrc = book.cover || book.coverPath;
+    if (!coverSrc && typeof book.id === "number") {
+      coverSrc = `/api/audiobooks/${book.id}/cover`;
+    }
+    if (coverSrc) {
+      coverEl.src = coverSrc;
+      coverEl.alt = book.title || "Cover";
+      coverEl.style.display = "block";
+      if (placeholderEl) placeholderEl.style.display = "none";
+      coverEl.onerror = () => {
+        coverEl.style.display = "none";
+        if (placeholderEl) placeholderEl.style.display = "flex";
+      };
+    } else {
+      coverEl.style.display = "none";
+      if (placeholderEl) placeholderEl.style.display = "flex";
+    }
   }
 
   // Metadata
