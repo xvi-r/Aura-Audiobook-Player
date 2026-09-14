@@ -16,7 +16,7 @@ services:
       retries: 5
 
   aura-app:
-    image: xvirr/aura-app:v0.7.6
+    image: xvirr/aura-app:v0.7.7
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/audiobooks
       SPRING_DATASOURCE_USERNAME: postgres
