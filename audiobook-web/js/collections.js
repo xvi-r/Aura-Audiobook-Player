@@ -2,7 +2,7 @@
 import { player } from "./player.js";
 import { router } from "./router.js";
 import { AUDIOBOOKS } from "./data.js";
-import { getApiBase } from "./config.js";
+import { getApiBase, fetchWithTimeout } from "./config.js";
 
 const FRANCHISES = {
   "star wars": "Star Wars",
@@ -250,14 +250,75 @@ const renderSingleCollection = async (collectionName, collections, autoGenreMap,
   };
 
   allBooks.forEach(b => {
-    const pos = (b.progressResponse && b.progressResponse.position !== undefined && b.progressResponse.position !== null)
-      ? parseFloat(b.progressResponse.position)
-      : (b.position !== undefined && b.position !== null ? parseFloat(b.position) : (b.progressSeconds || 0));
-    b.position = pos;
-    b.progressSeconds = pos;
-    b.cover = b.cover || b.coverPath || (typeof b.id === "number" ? `${API_BASE}/api/audiobooks/${b.id}/cover` : "assets/covers/default.png");
-    b.narrator = b.narrator || "Unknown Narrator";
+    b.id = b.id ?? b.bookId ?? b._id ?? b.audioBookId;
+    b.title = b.title || "Untitled Book";
+    b.author = b.author || "Unknown Author";
+
+    let localPos = 0;
+    let localTime = 0;
+    let localCompleted = false;
+    try {
+      const stored = localStorage.getItem(`aura_progress_${b.id}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed) {
+          const lp = (parsed.position !== undefined && parsed.position !== null)
+            ? parseFloat(parsed.position)
+            : (parsed.positionSeconds !== undefined ? parseFloat(parsed.positionSeconds) : 0);
+          if (!isNaN(lp) && lp > 0) localPos = lp;
+          localCompleted = !!parsed.completed;
+          if (typeof parsed.timestamp === "number" && parsed.timestamp > 0) {
+            localTime = parsed.timestamp;
+          } else if (parsed.updatedAt) {
+            const t = new Date(parsed.updatedAt).getTime();
+            if (!isNaN(t)) localTime = t;
+          }
+        }
+      }
+    } catch (e) {}
+
+    let serverPos = (b.position !== undefined && b.position !== null)
+      ? parseFloat(b.position)
+      : ((b.progressResponse && b.progressResponse.position !== undefined && b.progressResponse.position !== null)
+        ? parseFloat(b.progressResponse.position)
+        : (b.progressSeconds || 0));
+    if (isNaN(serverPos) || serverPos < 0) serverPos = 0;
+
+    let serverTime = 0;
+    const str = b.getLastPlayedAt || b.lastPlayedAt || b.updatedAt || (b.progressResponse && (b.progressResponse.getLastPlayedAt || b.progressResponse.lastPlayedAt || b.progressResponse.updatedAt));
+    if (str) {
+      const t = new Date(str).getTime();
+      if (!isNaN(t)) serverTime = t;
+    }
+
+    // STRICT TIMESTAMP RECONCILIATION:
+    // The only check to replace the time is the timestamp and never the position.
+    let effectivePos = 0;
+    let effectiveCompleted = false;
+    if (localTime > 0 && serverTime > 0) {
+      if (localTime >= serverTime) {
+        effectivePos = localPos;
+        effectiveCompleted = localCompleted;
+      } else {
+        effectivePos = serverPos;
+        effectiveCompleted = b.completed !== undefined ? !!b.completed : (b.progressResponse ? !!b.progressResponse.completed : false);
+      }
+    } else if (localTime > 0 && localPos > 0) {
+      effectivePos = localPos;
+      effectiveCompleted = localCompleted;
+    } else {
+      effectivePos = serverPos;
+      effectiveCompleted = b.completed !== undefined ? !!b.completed : (b.progressResponse ? !!b.progressResponse.completed : false);
+    }
+
+    b.position = effectivePos;
+    b.progressSeconds = effectivePos;
+    b.completed = effectiveCompleted;
+    b.lastPlayedTimestamp = Math.max(localTime, serverTime);
+    b.runtimeSeconds = b.duration || 0;
     b.runtime = formatDuration(b.duration);
+    b.narrator = b.narrator || "Unknown Narrator";
+    b.cover = b.cover || b.coverPath || (typeof b.id === "number" ? `${API_BASE}/api/audiobooks/${b.id}/cover` : "assets/covers/default.png");
   });
 
   // Determine books in this collection
@@ -392,8 +453,7 @@ const renderSingleCollection = async (collectionName, collections, autoGenreMap,
       const id = btn.dataset.id;
       const book = books.find(b => b.id.toString() === id.toString());
       if (book) {
-        const resumeTime = (book.progressSeconds > 0 ? book.progressSeconds : (book.position > 0 ? book.position : null));
-        player.loadBook(book, 0, resumeTime, true);
+        player.loadBook(book, 0, null, true);
       }
     });
   });

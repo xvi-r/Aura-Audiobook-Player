@@ -66,15 +66,67 @@ export async function renderLibrary(searchQuery = "", isRecentlyPlayedView = fal
     b.title = b.title || "Untitled Book";
     b.author = b.author || "Unknown Author";
 
-    const pos = (b.position !== undefined && b.position !== null)
+    let localPos = 0;
+    let localTime = 0;
+    let localCompleted = false;
+    try {
+      const stored = localStorage.getItem(`aura_progress_${b.id}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed) {
+          const lp = (parsed.position !== undefined && parsed.position !== null)
+            ? parseFloat(parsed.position)
+            : (parsed.positionSeconds !== undefined ? parseFloat(parsed.positionSeconds) : 0);
+          if (!isNaN(lp) && lp > 0) localPos = lp;
+          localCompleted = !!parsed.completed;
+          if (typeof parsed.timestamp === "number" && parsed.timestamp > 0) {
+            localTime = parsed.timestamp;
+          } else if (parsed.updatedAt) {
+            const t = new Date(parsed.updatedAt).getTime();
+            if (!isNaN(t)) localTime = t;
+          }
+        }
+      }
+    } catch (e) {}
+
+    let serverPos = (b.position !== undefined && b.position !== null)
       ? parseFloat(b.position)
       : ((b.progressResponse && b.progressResponse.position !== undefined && b.progressResponse.position !== null)
         ? parseFloat(b.progressResponse.position)
         : (b.progressSeconds || 0));
-    b.position = pos;
-    b.progressSeconds = pos;
-    b.completed = b.completed !== undefined ? !!b.completed : (b.progressResponse ? !!b.progressResponse.completed : false);
-    b.lastPlayedTimestamp = b.lastPlayedTimestamp || 0;
+    if (isNaN(serverPos) || serverPos < 0) serverPos = 0;
+
+    let serverTime = 0;
+    const str = b.getLastPlayedAt || b.lastPlayedAt || b.updatedAt || (b.progressResponse && (b.progressResponse.getLastPlayedAt || b.progressResponse.lastPlayedAt || b.progressResponse.updatedAt));
+    if (str) {
+      const t = new Date(str).getTime();
+      if (!isNaN(t)) serverTime = t;
+    }
+
+    // STRICT TIMESTAMP RECONCILIATION:
+    // The only check to replace the time is the timestamp and never the position.
+    let effectivePos = 0;
+    let effectiveCompleted = false;
+    if (localTime > 0 && serverTime > 0) {
+      if (localTime >= serverTime) {
+        effectivePos = localPos;
+        effectiveCompleted = localCompleted;
+      } else {
+        effectivePos = serverPos;
+        effectiveCompleted = b.completed !== undefined ? !!b.completed : (b.progressResponse ? !!b.progressResponse.completed : false);
+      }
+    } else if (localTime > 0 && localPos > 0) {
+      effectivePos = localPos;
+      effectiveCompleted = localCompleted;
+    } else {
+      effectivePos = serverPos;
+      effectiveCompleted = b.completed !== undefined ? !!b.completed : (b.progressResponse ? !!b.progressResponse.completed : false);
+    }
+
+    b.position = effectivePos;
+    b.progressSeconds = effectivePos;
+    b.completed = effectiveCompleted;
+    b.lastPlayedTimestamp = Math.max(localTime, serverTime);
     b.runtimeSeconds = b.duration || 0;
 
     let coverUrl = null;
@@ -307,8 +359,8 @@ function setupLibraryEvents(container, books, searchQuery = "") {
       const id = playBtn.getAttribute("data-id");
       const book = books.find((b) => String(b.id) === String(id));
       if (book) {
-        const resumeTime = (book.progressSeconds > 0 ? book.progressSeconds : (book.position > 0 ? book.position : null));
-        player.loadBook(book, 0, resumeTime, true);
+        // Pass null elapsedBookSeconds to trigger canonical timestamp reconciliation
+        player.loadBook(book, 0, null, true);
       }
       return;
     }

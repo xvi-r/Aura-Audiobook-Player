@@ -45,46 +45,105 @@ export async function renderDetails(bookId) {
 
   book.id = book.id ?? book.bookId ?? book._id ?? book.audiobookId ?? bookId;
 
-  // Parse progress safely from localStorage, embedded progressResponse, object properties, or DB
+  // Parse progress safely from localStorage, embedded progressResponse, object properties, and DB
   let localPos = 0;
+  let localTime = 0;
+  let localCompleted = false;
   try {
     const stored = localStorage.getItem(`aura_progress_${book.id}`);
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (parsed && typeof parsed.position === "number" && parsed.position > 0) {
-        localPos = parsed.position;
+      if (parsed) {
+        const lp = (parsed.position !== undefined && parsed.position !== null)
+          ? parseFloat(parsed.position)
+          : (parsed.positionSeconds !== undefined ? parseFloat(parsed.positionSeconds) : 0);
+        if (!isNaN(lp) && lp > 0) localPos = lp;
+        localCompleted = !!parsed.completed;
+        if (typeof parsed.timestamp === "number" && parsed.timestamp > 0) {
+          localTime = parsed.timestamp;
+        } else if (parsed.updatedAt) {
+          const t = new Date(parsed.updatedAt).getTime();
+          if (!isNaN(t)) localTime = t;
+        }
       }
     }
   } catch (e) {}
 
-  let objPos = 0;
+  let serverPos = 0;
+  let serverTime = 0;
+  let serverCompleted = false;
   if (book.progressResponse && book.progressResponse.position !== undefined && book.progressResponse.position !== null) {
-    objPos = parseFloat(book.progressResponse.position);
-    book.completed = !!book.progressResponse.completed;
+    serverPos = parseFloat(book.progressResponse.position) || 0;
+    serverCompleted = !!book.progressResponse.completed;
+    const str = book.progressResponse.updatedAt || book.progressResponse.lastPlayedAt || book.progressResponse.getLastPlayedAt;
+    if (str) {
+      const t = new Date(str).getTime();
+      if (!isNaN(t)) serverTime = t;
+    }
   } else if (book.position !== undefined && book.position !== null) {
-    objPos = parseFloat(book.position);
+    serverPos = parseFloat(book.position) || 0;
+    serverCompleted = !!book.completed;
+    const str = book.getLastPlayedAt || book.lastPlayedAt || book.updatedAt;
+    if (str) {
+      const t = new Date(str).getTime();
+      if (!isNaN(t)) serverTime = t;
+    }
   } else if (book.progressSeconds !== undefined && book.progressSeconds !== null) {
-    objPos = parseFloat(book.progressSeconds);
+    serverPos = parseFloat(book.progressSeconds) || 0;
   }
 
-  let bestPos = Math.max(localPos, objPos);
-
-  if (bestPos === 0 && book.id) {
+  // Always check freshest DB progress from /api/audiobooks/{id}/progress unless explicitly reset
+  if (book.id && !book.isExplicitReset) {
     try {
       const progRes = await fetchWithTimeout(`${API_BASE}/api/audiobooks/${book.id}/progress`, {}, 2500);
       if (progRes.ok) {
         const progData = await progRes.json();
         if (progData && progData.position !== undefined && progData.position !== null) {
-          bestPos = Math.max(bestPos, parseFloat(progData.position));
-          book.completed = progData.completed;
+          const p = parseFloat(progData.position);
+          if (!isNaN(p) && p >= 0) {
+            serverPos = p;
+            serverCompleted = !!progData.completed;
+            const str = progData.updatedAt || progData.lastPlayedAt || progData.getLastPlayedAt;
+            if (str) {
+              const t = new Date(str).getTime();
+              if (!isNaN(t)) serverTime = t;
+            }
+          }
         }
       }
     } catch (e) {}
   }
 
+  // STRICT TIMESTAMP RECONCILIATION:
+  // The only check to replace the time is the timestamp and never the position.
+  let bestPos = 0;
+  let bestCompleted = false;
+  if (localTime > 0 && serverTime > 0) {
+    if (localTime >= serverTime) {
+      bestPos = localPos;
+      bestCompleted = localCompleted;
+    } else {
+      bestPos = serverPos;
+      bestCompleted = serverCompleted;
+    }
+  } else if (localTime > 0 && localPos > 0) {
+    bestPos = localPos;
+    bestCompleted = localCompleted;
+  } else if (serverTime > 0 && serverPos > 0) {
+    bestPos = serverPos;
+    bestCompleted = serverCompleted;
+  } else if (localPos > 0) {
+    bestPos = localPos;
+    bestCompleted = localCompleted;
+  } else {
+    bestPos = serverPos;
+    bestCompleted = serverCompleted;
+  }
+
   // Map API entities to UI expectations
   book.position = bestPos;
   book.progressSeconds = bestPos;
+  book.completed = bestCompleted;
   
   book.chapters = book.chapters || [];
   book.author = book.author || "Unknown Author";
@@ -419,9 +478,8 @@ function setupDetailsEvents(book, container) {
       if (isLoadedInPlayer) {
         player.togglePlay();
       } else {
-        // Load current book and start play (null elapsedBookSeconds means resume latest progress)
-        const resumeTime = (book.progressSeconds > 0 ? book.progressSeconds : (book.position > 0 ? book.position : null));
-        player.loadBook(book, 0, resumeTime, true);
+        // Load current book and resume (null elapsedBookSeconds triggers canonical timestamp reconciliation)
+        player.loadBook(book, 0, null, true);
       }
     });
   }
@@ -455,6 +513,13 @@ function setupDetailsEvents(book, container) {
       book.isExplicitReset = true;
       try {
         localStorage.removeItem(`aura_progress_${book.id}`);
+        const lastPlayed = localStorage.getItem("aura_last_played_state");
+        if (lastPlayed) {
+          const parsed = JSON.parse(lastPlayed);
+          if (parsed && String(parsed.bookId) === String(book.id)) {
+            localStorage.removeItem("aura_last_played_state");
+          }
+        }
       } catch (e) {}
       const API_BASE = getApiBase();
       try {
@@ -468,7 +533,7 @@ function setupDetailsEvents(book, container) {
       }
       const isLoadedInPlayer = player.currentBook && String(player.currentBook.id) === String(book.id);
       if (isLoadedInPlayer) {
-        player.loadBook(book, 0, 0);
+        player.loadBook(book, 0, 0, false);
       }
       renderDetails(book.id);
     });
