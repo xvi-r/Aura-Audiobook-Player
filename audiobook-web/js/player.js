@@ -426,7 +426,7 @@ class PlayerController {
       }
     }
     if (isNaN(num)) return 0;
-    return num > 86400 ? num / 1000 : num;
+    return (num > 3600000) ? num / 1000 : num;
   }
 
   getChapterStartTime(ch) {
@@ -439,17 +439,17 @@ class PlayerController {
   sortChapters(chapters) {
     if (!Array.isArray(chapters)) return;
     chapters.sort((a, b) => {
-      const getNum = (ch) => {
-        const val = ch.chapterNumber ?? ch.chapter_number ?? ch.id;
-        const n = parseInt(val, 10);
-        return isNaN(n) ? 0 : n;
-      };
-      const numA = getNum(a);
-      const numB = getNum(b);
-      if (numA > 0 && numB > 0 && numA !== numB) {
+      const startA = this.getChapterStartTime(a);
+      const startB = this.getChapterStartTime(b);
+      if (!isNaN(startA) && !isNaN(startB) && startA !== startB) {
+        return startA - startB;
+      }
+      const numA = parseInt(a.chapterNumber ?? a.chapter_number, 10) || 0;
+      const numB = parseInt(b.chapterNumber ?? b.chapter_number, 10) || 0;
+      if (numA !== numB) {
         return numA - numB;
       }
-      return this.getChapterStartTime(a) - this.getChapterStartTime(b);
+      return (a.id || 0) - (b.id || 0);
     });
   }
 
@@ -534,9 +534,11 @@ class PlayerController {
 
   getCurrentChapterIndex() {
     if (!this.currentBook || !Array.isArray(this.currentBook.chapters) || this.currentBook.chapters.length === 0) return 0;
-    const secs = (this.audio && !isNaN(this.audio.currentTime) && this.audio.currentTime > 0)
-      ? this.audio.currentTime
-      : (this.pendingTargetTime !== undefined && this.pendingTargetTime !== null ? this.pendingTargetTime : (this.currentBook.position || this.currentBook.progressSeconds || 0));
+    const secs = (this.pendingTargetTime !== undefined && this.pendingTargetTime !== null)
+      ? this.pendingTargetTime
+      : ((this.audio && !isNaN(this.audio.currentTime) && this.audio.currentTime > 0)
+        ? this.audio.currentTime
+        : (this.currentBook.position || this.currentBook.progressSeconds || 0));
 
     for (let i = this.currentBook.chapters.length - 1; i >= 0; i--) {
       const start = this.getChapterStartTime(this.currentBook.chapters[i]);
@@ -591,49 +593,51 @@ class PlayerController {
       nowPlayingItem.style.display = "block";
     }
 
-    // Determine target seek time (Safely checking explicit argument, object properties, localStorage, and DB)
+    // Determine target seek time
     let targetTime = 0;
 
-    // Check localStorage position
-    let localPos = 0;
-    if (book.id) {
-      try {
-        const stored = localStorage.getItem(`aura_progress_${book.id}`);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed && typeof parsed.position === "number" && parsed.position > 0) {
-            localPos = parsed.position;
+    // Case 1: Explicit seek position provided (e.g. user clicked a chapter, seeked, or explicit reset)
+    if (elapsedBookSeconds !== null && elapsedBookSeconds !== undefined) {
+      targetTime = Math.max(0, parseFloat(elapsedBookSeconds) || 0);
+    } else {
+      // Case 2: Resume / Initial Load without explicit seek time — resolve latest saved progress
+      let localPos = 0;
+      if (book.id) {
+        try {
+          const stored = localStorage.getItem(`aura_progress_${book.id}`);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed.position === "number" && parsed.position > 0) {
+              localPos = parsed.position;
+            }
           }
-        }
-      } catch (e) {}
-    }
+        } catch (e) {}
+      }
 
-    const candidateTimes = [];
-    if (typeof elapsedBookSeconds === "number" && elapsedBookSeconds > 0) candidateTimes.push(elapsedBookSeconds);
-    if (book.progressResponse && book.progressResponse.position !== undefined && book.progressResponse.position !== null) {
-      const p = parseFloat(book.progressResponse.position);
-      if (p > 0) candidateTimes.push(p);
-    }
-    if (book.position !== undefined && book.position !== null) {
-      const p = parseFloat(book.position);
-      if (p > 0) candidateTimes.push(p);
-    }
-    if (book.progress && book.progress.position !== undefined && book.progress.position !== null) {
-      const p = parseFloat(book.progress.position);
-      if (p > 0) candidateTimes.push(p);
-    }
-    if (book.progressSeconds !== undefined && book.progressSeconds !== null) {
-      const p = parseFloat(book.progressSeconds);
-      if (p > 0) candidateTimes.push(p);
-    }
-    if (localPos > 0) candidateTimes.push(localPos);
+      const candidateTimes = [];
+      if (book.progressResponse && book.progressResponse.position !== undefined && book.progressResponse.position !== null) {
+        const p = parseFloat(book.progressResponse.position);
+        if (p > 0) candidateTimes.push(p);
+      }
+      if (book.position !== undefined && book.position !== null) {
+        const p = parseFloat(book.position);
+        if (p > 0) candidateTimes.push(p);
+      }
+      if (book.progress && book.progress.position !== undefined && book.progress.position !== null) {
+        const p = parseFloat(book.progress.position);
+        if (p > 0) candidateTimes.push(p);
+      }
+      if (book.progressSeconds !== undefined && book.progressSeconds !== null) {
+        const p = parseFloat(book.progressSeconds);
+        if (p > 0) candidateTimes.push(p);
+      }
+      if (localPos > 0) candidateTimes.push(localPos);
 
-    if (candidateTimes.length > 0) {
-      targetTime = Math.max(...candidateTimes);
-    } else if (book.isExplicitReset) {
-      targetTime = 0;
-    } else if (book.chapters && book.chapters[chapterIndex]) {
-      targetTime = this.getChapterStartTime(book.chapters[chapterIndex]);
+      if (candidateTimes.length > 0) {
+        targetTime = Math.max(...candidateTimes);
+      } else if (book.chapters && book.chapters[chapterIndex]) {
+        targetTime = this.getChapterStartTime(book.chapters[chapterIndex]);
+      }
     }
 
     this.pendingTargetTime = targetTime;
@@ -656,25 +660,24 @@ class PlayerController {
         .catch(err => console.warn("[Aura] Could not fetch chapters for book:", err));
     }
 
-    // Always fetch freshest progress from backend to sync server state if available
-    if (book.id) {
+    // Only fetch server progress if we are resuming/loading without an explicit seek target,
+    // AND targetTime was not already resolved
+    if (book.id && elapsedBookSeconds === null && targetTime === 0) {
       this.fetchProgress(book.id).then(prog => {
         if (prog && prog.position !== undefined && prog.position !== null) {
           const freshPos = parseFloat(prog.position);
-          if (!isNaN(freshPos) && freshPos >= 0) {
-            book.position = Math.max(book.position || 0, freshPos);
-            book.progressSeconds = Math.max(book.progressSeconds || 0, freshPos);
+          if (!isNaN(freshPos) && freshPos > 0) {
+            book.position = freshPos;
+            book.progressSeconds = freshPos;
             book.completed = prog.completed;
-            this.pendingTargetTime = Math.max(this.pendingTargetTime || 0, freshPos);
+            this.pendingTargetTime = freshPos;
             this.currentChapterIndex = this.getCurrentChapterIndex();
             this.updateUI();
             if (this.currentBook && String(this.currentBook.id) === String(book.id)) {
-              if (freshPos > (this.audio.currentTime || 0) + 2) {
-                try {
-                  this.audio.currentTime = freshPos;
-                  this.updatePlaybackProgressUI();
-                } catch (err) {}
-              }
+              try {
+                this.audio.currentTime = freshPos;
+                this.updatePlaybackProgressUI();
+              } catch (err) {}
             }
           }
         }
@@ -711,6 +714,8 @@ class PlayerController {
       } catch (e) {
         console.warn("[Aura] Seek error:", e);
       }
+      this.pendingTargetTime = null;
+      this.currentChapterIndex = this.getCurrentChapterIndex();
       this.audio.playbackRate = this.playbackSpeed;
       if (autoPlay) {
         this.play();
@@ -1083,8 +1088,10 @@ class PlayerController {
     if (!duration) return;
     
     this.audio.currentTime = Math.min(Math.max(0, this.audio.currentTime + seconds), duration);
+    this.currentChapterIndex = this.getCurrentChapterIndex();
     this.saveProgress(true);
     this.updatePlaybackProgressUI();
+    this.notifyTrackChange();
     this.notifyTimeUpdate();
   }
 
@@ -1103,6 +1110,7 @@ class PlayerController {
     // Hold user seeking guard so background timeupdate doesn't overwrite UI with old position while audio seeks
     this.isUserSeeking = true;
     this.audio.currentTime = Math.min(Math.max(0, targetTime), duration);
+    this.currentChapterIndex = this.getCurrentChapterIndex();
 
     if (this.seekTimer) clearTimeout(this.seekTimer);
     this.seekTimer = setTimeout(() => {
@@ -1112,6 +1120,7 @@ class PlayerController {
 
     this.saveProgress(true);
     this.updatePlaybackProgressUI();
+    this.notifyTrackChange();
     this.notifyTimeUpdate();
   }
 
@@ -1122,8 +1131,11 @@ class PlayerController {
     if (this.currentChapterIndex < this.currentBook.chapters.length - 1) {
       const nextCh = this.currentBook.chapters[this.currentChapterIndex + 1];
       this.audio.currentTime = this.getChapterStartTime(nextCh);
+      this.currentChapterIndex = this.getCurrentChapterIndex();
       this.saveProgress(true);
       this.updateUI();
+      this.notifyTrackChange();
+      this.notifyTimeUpdate();
     }
   }
 
@@ -1141,9 +1153,11 @@ class PlayerController {
       const prevCh = this.currentBook.chapters[this.currentChapterIndex - 1];
       this.audio.currentTime = this.getChapterStartTime(prevCh);
     }
-    
+    this.currentChapterIndex = this.getCurrentChapterIndex();
     this.saveProgress(true);
     this.updateUI();
+    this.notifyTrackChange();
+    this.notifyTimeUpdate();
   }
 
   setVolume(val) {

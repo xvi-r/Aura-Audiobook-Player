@@ -5,7 +5,13 @@ import { router } from "./router.js";
 import { getApiBase, fetchWithTimeout } from "./config.js";
 import { openEpubReader, uploadEpubFile, checkEpubExists, extractEpubChapters, fetchEpubBuffer } from "./epub_reader.js";
 
+let activeDetailsCleanup = null;
+
 export async function renderDetails(bookId) {
+  if (typeof activeDetailsCleanup === "function") {
+    activeDetailsCleanup();
+    activeDetailsCleanup = null;
+  }
   const API_BASE = getApiBase();
   const container = document.getElementById("main-content");
   container.className = "fade-in";
@@ -157,7 +163,11 @@ export async function renderDetails(bookId) {
   }
 
   // Sort chapters in logical ascending order of start time
-  book.chapters.sort((a, b) => player.getChapterStartTime(a) - player.getChapterStartTime(b));
+  if (player && typeof player.sortChapters === "function") {
+    player.sortChapters(book.chapters);
+  } else {
+    book.chapters.sort((a, b) => player.getChapterStartTime(a) - player.getChapterStartTime(b));
+  }
 
   book.chapters.forEach((ch, idx) => {
     ch.duration = player.getChapterDuration(ch, idx, book.chapters);
@@ -169,6 +179,7 @@ export async function renderDetails(bookId) {
     player.currentBook = book;
   }
   const isCurrentlyPlaying = isLoadedInPlayer && player.isPlaying;
+  const currentActiveIdx = isLoadedInPlayer ? player.currentChapterIndex : -1;
   const hasProgress = book.progressSeconds > 0;
 
   let mainPlayLabel = "Play from Start";
@@ -329,9 +340,9 @@ export async function renderDetails(bookId) {
             <span class="chapters-count">${book.chapters.length} Chapters</span>
           </div>
           
-          <div class="chapters-list" id="chapters-list-container">
+          <div class="chapters-list" id="chapters-list-container" data-book-id="${book.id}">
             ${book.chapters.map((ch, idx) => {
-              const isActiveChapter = isLoadedInPlayer && isCurrentlyPlaying && player.currentChapterIndex === idx;
+              const isActiveChapter = (idx === currentActiveIdx);
               const chTitle = ch.title || ch.name || `Chapter ${idx + 1}`;
               const dur = player.getChapterDuration(ch, idx, book.chapters);
               const durationStr = dur > 0 ? player.formatTime(dur) : "--:--";
@@ -408,11 +419,10 @@ function setupDetailsEvents(book, container) {
       if (isLoadedInPlayer) {
         player.togglePlay();
       } else {
-        // Load current book and start play (respecting existing progress)
-        player.loadBook(book, 0, book.progressSeconds ?? book.position ?? null, true);
+        // Load current book and start play (null elapsedBookSeconds means resume latest progress)
+        const resumeTime = (book.progressSeconds > 0 ? book.progressSeconds : (book.position > 0 ? book.position : null));
+        player.loadBook(book, 0, resumeTime, true);
       }
-      // Refresh page state (to update button icons and text)
-      renderDetails(book.id);
     });
   }
 
@@ -518,94 +528,104 @@ function setupDetailsEvents(book, container) {
     });
   }
 
+  // Centralized updater for chapters table active state and play/pause icon
+  const updateActiveChapterUI = (activeIdx, isPlaying) => {
+    const listContainer = document.getElementById("chapters-list-container");
+    if (!listContainer) return;
+    if (listContainer.getAttribute("data-book-id") !== String(book.id)) return;
+
+    const isThisBookLoaded = player.currentBook && String(player.currentBook.id) === String(book.id);
+    const targetIdx = isThisBookLoaded ? activeIdx : -1;
+    const targetPlaying = isThisBookLoaded && isPlaying;
+
+    const items = listContainer.querySelectorAll(".chapter-item");
+    items.forEach((item) => {
+      const idx = parseInt(item.getAttribute("data-idx"), 10);
+      const isActive = (idx === targetIdx);
+      const playStateSpan = item.querySelector(".chapter-play-state");
+
+      if (isActive) {
+        if (!item.classList.contains("active")) {
+          item.classList.add("active");
+        }
+        if (playStateSpan) {
+          playStateSpan.innerHTML = targetPlaying
+            ? `<i data-lucide="volume-2" class="pulse-icon"></i>`
+            : `<i data-lucide="play-circle"></i>`;
+        }
+      } else {
+        if (item.classList.contains("active")) {
+          item.classList.remove("active");
+        }
+        if (playStateSpan) {
+          playStateSpan.innerHTML = `<i data-lucide="play-circle"></i>`;
+        }
+      }
+    });
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  };
+
   // Chapters click handlers (fully functional chapter navigation!)
   const chapterItems = container.querySelectorAll(".chapter-item");
-  console.log("[Aura] Found", chapterItems.length, "chapter items in DOM");
   chapterItems.forEach(item => {
     item.addEventListener("click", () => {
       const idx = parseInt(item.getAttribute("data-idx"), 10);
       const ch = book.chapters[idx];
-      console.log("[Aura] Chapter clicked: idx=" + idx, "ch=", ch, "book.id=", book.id);
-      if (!ch) {
-        console.warn("[Aura] No chapter found at index", idx, "book.chapters.length=", book.chapters.length);
-        return;
-      }
+      if (!ch) return;
 
       const startTime = player.getChapterStartTime(ch);
-      console.log("[Aura] Chapter startTime=", startTime, "player.currentBook?", !!player.currentBook, "player.currentBook.id=", player.currentBook?.id);
-      
-      // Always use loadBook — it handles both same-book seeks and new-book loads
       player.loadBook(book, idx, startTime, true);
 
-      // Update active row state in-place without resetting table scroll position!
-      chapterItems.forEach(ci => ci.classList.remove("active"));
-      item.classList.add("active");
+      // Immediately highlight the clicked chapter with volume-2 sound icon
+      updateActiveChapterUI(idx, true);
     });
   });
 
   // Listen to global player updates to keep active chapters highlighted dynamically
   const timeUpdateHandler = (e) => {
+    if (!e.detail || String(e.detail.bookId) !== String(book.id)) return;
     const isThisBookPlaying = player.currentBook && String(player.currentBook.id) === String(book.id) && player.isPlaying;
-    if (e.detail && e.detail.bookId !== undefined && String(e.detail.bookId) === String(book.id) && isThisBookPlaying) {
-      // Highlight the active chapter without full re-render for performance
-      const listContainer = document.getElementById("chapters-list-container");
-      if (listContainer) {
-        const items = listContainer.querySelectorAll(".chapter-item");
-        items.forEach((item, idx) => {
-          const isActive = idx === e.detail.chapterIndex;
-          const wasActive = item.classList.contains("active");
-          
-          if (isActive && !wasActive) {
-            item.classList.add("active");
-            const playStateSpan = item.querySelector(".chapter-play-state");
-            if (playStateSpan) {
-              playStateSpan.innerHTML = `<i data-lucide="volume-2"></i>`;
-            }
-          } else if (!isActive && wasActive) {
-            item.classList.remove("active");
-            const playStateSpan = item.querySelector(".chapter-play-state");
-            if (playStateSpan) {
-              playStateSpan.innerHTML = `<i data-lucide="play-circle"></i>`;
-            }
-          }
-        });
-        if (window.lucide) window.lucide.createIcons();
-      }
-    }
+    const activeIdx = (e.detail.chapterIndex !== undefined && e.detail.chapterIndex !== null)
+      ? e.detail.chapterIndex
+      : player.currentChapterIndex;
+    updateActiveChapterUI(activeIdx, isThisBookPlaying);
+  };
+
+  const trackChangeHandler = (e) => {
+    if (!e.detail || String(e.detail.bookId) !== String(book.id)) return;
+    const isThisBookPlaying = player.currentBook && String(player.currentBook.id) === String(book.id) && player.isPlaying;
+    const activeIdx = (e.detail.chapterIndex !== undefined && e.detail.chapterIndex !== null)
+      ? e.detail.chapterIndex
+      : player.currentChapterIndex;
+    updateActiveChapterUI(activeIdx, isThisBookPlaying);
   };
 
   const playStateChangeHandler = (e) => {
-    if (e.detail && e.detail.bookId !== undefined && String(e.detail.bookId) === String(book.id)) {
-      // Keep play/pause button state in sync
-      const playBtn = document.getElementById("details-play-btn");
-      if (playBtn) {
-        const hasProgress = book.progressSeconds > 0;
-        let labelText, iconName;
-        if (e.detail.isPlaying) {
-          labelText = "Pause Playback";
-          iconName = "pause";
-        } else {
-          labelText = hasProgress ? "Resume Listening" : "Play from Start";
-          iconName = hasProgress ? "play-circle" : "play";
-        }
-        playBtn.innerHTML = `<i data-lucide="${iconName}"></i><span>${labelText}</span>`;
-        if (window.lucide) window.lucide.createIcons();
-      }
+    if (!e.detail || String(e.detail.bookId) !== String(book.id)) return;
 
-      // Keep active chapter volume indicator in sync
-      const listContainer = document.getElementById("chapters-list-container");
-      if (listContainer) {
-        const activeItem = listContainer.querySelector(".chapter-item.active");
-        if (activeItem) {
-          const playStateSpan = activeItem.querySelector(".chapter-play-state");
-          if (playStateSpan) {
-            playStateSpan.innerHTML = e.detail.isPlaying
-              ? `<i data-lucide="volume-2"></i>`
-              : `<i data-lucide="play-circle"></i>`;
-            if (window.lucide) window.lucide.createIcons();
-          }
-        }
+    // Keep play/pause button state in sync
+    const playBtn = document.getElementById("details-play-btn");
+    if (playBtn) {
+      const hasProgress = (book.progressSeconds > 0 || book.position > 0);
+      let labelText, iconName;
+      if (e.detail.isPlaying) {
+        labelText = "Pause Playback";
+        iconName = "pause";
+      } else {
+        labelText = hasProgress ? "Resume Listening" : "Play from Start";
+        iconName = hasProgress ? "play-circle" : "play";
       }
+      playBtn.innerHTML = `<i data-lucide="${iconName}"></i><span>${labelText}</span>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    // Keep active chapter volume indicator in sync
+    const isThisBookLoaded = player.currentBook && String(player.currentBook.id) === String(book.id);
+    if (isThisBookLoaded) {
+      updateActiveChapterUI(player.currentChapterIndex, e.detail.isPlaying);
     }
   };
 
@@ -644,16 +664,21 @@ function setupDetailsEvents(book, container) {
 
   // Bind to window event listeners
   window.addEventListener("audiobook-time-update", timeUpdateHandler);
+  window.addEventListener("audiobook-track-change", trackChangeHandler);
   window.addEventListener("audiobook-play-state-change", playStateChangeHandler);
   window.addEventListener("resize", updateChaptersMaxHeight);
 
   // Store references on the container element so they can be cleaned up if needed
-  container.cleanupDetailsListeners = () => {
+  const cleanup = () => {
     container.style.overflow = "";
     window.removeEventListener("audiobook-time-update", timeUpdateHandler);
+    window.removeEventListener("audiobook-track-change", trackChangeHandler);
     window.removeEventListener("audiobook-play-state-change", playStateChangeHandler);
     window.removeEventListener("resize", updateChaptersMaxHeight);
+    activeDetailsCleanup = null;
   };
+  activeDetailsCleanup = cleanup;
+  container.cleanupDetailsListeners = cleanup;
 }
 
 export function openEditModal(book, onSaved) {
@@ -884,6 +909,10 @@ export function openEditModal(book, onSaved) {
 }
 
 export async function renderEbookDetails(ebookId) {
+  if (typeof activeDetailsCleanup === "function") {
+    activeDetailsCleanup();
+    activeDetailsCleanup = null;
+  }
   const API_BASE = getApiBase();
   const container = document.getElementById("main-content");
   container.className = "fade-in";
