@@ -4,6 +4,7 @@ import { player } from "./player.js";
 import { router } from "./router.js";
 import { getApiBase, fetchWithTimeout } from "./config.js";
 import { openEpubReader, uploadEpubFile, checkEpubExists, extractEpubChapters, fetchEpubBuffer } from "./epub_reader.js";
+import { reconcileBookProgress } from "./progress.js";
 
 let activeDetailsCleanup = null;
 
@@ -45,52 +46,8 @@ export async function renderDetails(bookId) {
 
   book.id = book.id ?? book.bookId ?? book._id ?? book.audiobookId ?? bookId;
 
-  // Parse progress safely from localStorage, embedded progressResponse, object properties, and DB
-  let localPos = 0;
-  let localTime = 0;
-  let localCompleted = false;
-  try {
-    const stored = localStorage.getItem(`aura_progress_${book.id}`);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed) {
-        const lp = (parsed.position !== undefined && parsed.position !== null)
-          ? parseFloat(parsed.position)
-          : (parsed.positionSeconds !== undefined ? parseFloat(parsed.positionSeconds) : 0);
-        if (!isNaN(lp) && lp > 0) localPos = lp;
-        localCompleted = !!parsed.completed;
-        if (typeof parsed.timestamp === "number" && parsed.timestamp > 0) {
-          localTime = parsed.timestamp;
-        } else if (parsed.updatedAt) {
-          const t = new Date(parsed.updatedAt).getTime();
-          if (!isNaN(t)) localTime = t;
-        }
-      }
-    }
-  } catch (e) {}
-
-  let serverPos = 0;
-  let serverTime = 0;
-  let serverCompleted = false;
-  if (book.progressResponse && book.progressResponse.position !== undefined && book.progressResponse.position !== null) {
-    serverPos = parseFloat(book.progressResponse.position) || 0;
-    serverCompleted = !!book.progressResponse.completed;
-    const str = book.progressResponse.updatedAt || book.progressResponse.lastPlayedAt || book.progressResponse.getLastPlayedAt;
-    if (str) {
-      const t = new Date(str).getTime();
-      if (!isNaN(t)) serverTime = t;
-    }
-  } else if (book.position !== undefined && book.position !== null) {
-    serverPos = parseFloat(book.position) || 0;
-    serverCompleted = !!book.completed;
-    const str = book.getLastPlayedAt || book.lastPlayedAt || book.updatedAt;
-    if (str) {
-      const t = new Date(str).getTime();
-      if (!isNaN(t)) serverTime = t;
-    }
-  } else if (book.progressSeconds !== undefined && book.progressSeconds !== null) {
-    serverPos = parseFloat(book.progressSeconds) || 0;
-  }
+  // Canonical progress reconciliation strictly by date-time timestamp
+  let reconciled = reconcileBookProgress(book.id, book);
 
   // Always check freshest DB progress from /api/audiobooks/{id}/progress unless explicitly reset
   if (book.id && !book.isExplicitReset) {
@@ -99,46 +56,14 @@ export async function renderDetails(bookId) {
       if (progRes.ok) {
         const progData = await progRes.json();
         if (progData && progData.position !== undefined && progData.position !== null) {
-          const p = parseFloat(progData.position);
-          if (!isNaN(p) && p >= 0) {
-            serverPos = p;
-            serverCompleted = !!progData.completed;
-            const str = progData.updatedAt || progData.lastPlayedAt || progData.getLastPlayedAt;
-            if (str) {
-              const t = new Date(str).getTime();
-              if (!isNaN(t)) serverTime = t;
-            }
-          }
+          reconciled = reconcileBookProgress(book.id, progData);
         }
       }
     } catch (e) {}
   }
 
-  // STRICT TIMESTAMP RECONCILIATION:
-  // The only check to replace the time is the timestamp and never the position.
-  let bestPos = 0;
-  let bestCompleted = false;
-  if (localTime > 0 && serverTime > 0) {
-    if (localTime >= serverTime) {
-      bestPos = localPos;
-      bestCompleted = localCompleted;
-    } else {
-      bestPos = serverPos;
-      bestCompleted = serverCompleted;
-    }
-  } else if (localTime > 0 && localPos > 0) {
-    bestPos = localPos;
-    bestCompleted = localCompleted;
-  } else if (serverTime > 0 && serverPos > 0) {
-    bestPos = serverPos;
-    bestCompleted = serverCompleted;
-  } else if (localPos > 0) {
-    bestPos = localPos;
-    bestCompleted = localCompleted;
-  } else {
-    bestPos = serverPos;
-    bestCompleted = serverCompleted;
-  }
+  const bestPos = reconciled.position;
+  const bestCompleted = reconciled.completed;
 
   // Map API entities to UI expectations
   book.position = bestPos;
