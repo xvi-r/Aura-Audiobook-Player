@@ -2,6 +2,7 @@
 import { AUDIOBOOKS } from "./data.js";
 import { getApiBase, fetchWithTimeout } from "./config.js";
 import { popoutManager } from "./popout.js";
+import { reconcileBookProgress, parseDateTimeToEpoch, parsePosition, getLocalStorageProgress } from "./progress.js";
 
 class PlayerController {
   constructor() {
@@ -95,28 +96,11 @@ class PlayerController {
           const bookId = data.id ?? data.audioBookId ?? data.audiobookId ?? data.bookId;
           if (bookId) {
             data.id = bookId;
-            const serverTimestamp = this.parseTimestamp(data) || this.parseTimestamp(data.progressResponse);
-            const serverPos = this.parsePosition(data) || this.parsePosition(data.progressResponse);
-
-            console.log(`[Aura Sync] Startup Timestamp comparison: Server=${serverTimestamp}, Local=${localTimestamp}`);
-
-            // STRICT TIMESTAMP RECONCILIATION:
-            // The only check to replace the time is the timestamp and never the position.
-            if (serverTimestamp > localTimestamp) {
-              console.log(`[Aura Sync] Server timestamp is NEWER (${serverTimestamp} > ${localTimestamp}). Using server position ${serverPos}s.`);
-              initialBook = data;
-              resolvedPos = serverPos;
-              resolvedChapterIndex = 0;
-            } else if (localState && localState.book && String(localState.book.id) === String(bookId)) {
-              console.log(`[Aura Sync] Local storage timestamp is NEWER or equal (${localTimestamp} >= ${serverTimestamp}). Retaining local position ${localPos}s.`);
-              initialBook = localState.book;
-              resolvedPos = localPos;
-              resolvedChapterIndex = localState.chapterIndex || 0;
-            } else {
-              initialBook = data;
-              resolvedPos = serverPos;
-              resolvedChapterIndex = 0;
-            }
+            const reconciled = reconcileBookProgress(bookId, data);
+            initialBook = data;
+            resolvedPos = reconciled.position;
+            resolvedChapterIndex = (reconciled.source === "local" && localState?.chapterIndex) ? localState.chapterIndex : 0;
+            console.log(`[Aura Sync] Startup reconciled book #${bookId}: winner=${reconciled.source}, pos=${reconciled.position}s, isNewer=${reconciled.isNewer}`);
           }
         }
       }
@@ -416,24 +400,11 @@ class PlayerController {
   }
 
   parseTimestamp(obj) {
-    if (!obj) return 0;
-    if (typeof obj.timestamp === "number" && obj.timestamp > 0) return obj.timestamp;
-    const str = obj.getLastPlayedAt || obj.lastPlayedAt || obj.updatedAt || obj.last_played_at || obj.updated_at;
-    if (!str) return 0;
-    const t = new Date(str).getTime();
-    return isNaN(t) ? 0 : t;
+    return parseDateTimeToEpoch(obj);
   }
 
   parsePosition(obj) {
-    if (!obj) return 0;
-    const p = (obj.position !== undefined && obj.position !== null)
-      ? parseFloat(obj.position)
-      : ((obj.positionSeconds !== undefined && obj.positionSeconds !== null)
-        ? parseFloat(obj.positionSeconds)
-        : ((obj.progressSeconds !== undefined && obj.progressSeconds !== null)
-          ? parseFloat(obj.progressSeconds)
-          : 0));
-    return (!isNaN(p) && p > 0) ? p : 0;
+    return parsePosition(obj);
   }
 
   parseSeconds(val) {
@@ -629,46 +600,9 @@ class PlayerController {
       targetTime = Math.max(0, parseFloat(elapsedBookSeconds) || 0);
     } else {
       // Case 2: Resume / Initial Load without explicit seek time — resolve latest saved progress by TIMESTAMP
-      let localPos = 0;
-      let localTime = 0;
-      if (book.id) {
-        try {
-          const stored = localStorage.getItem(`aura_progress_${book.id}`);
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed) {
-              localPos = this.parsePosition(parsed);
-              localTime = this.parseTimestamp(parsed);
-            }
-          }
-        } catch (e) {}
-      }
-
-      let serverPos = 0;
-      let serverTime = 0;
-      if (book.progressResponse) {
-        serverPos = this.parsePosition(book.progressResponse);
-        serverTime = this.parseTimestamp(book.progressResponse);
-      }
-      if (serverPos === 0 || serverTime === 0) {
-        const objPos = this.parsePosition(book);
-        const objTime = this.parseTimestamp(book);
-        if (objPos > 0 && serverPos === 0) serverPos = objPos;
-        if (objTime > 0 && serverTime === 0) serverTime = objTime;
-      }
-
-      // STRICT TIMESTAMP RECONCILIATION:
-      // The only check to replace the time is the timestamp and never the position.
-      if (localTime > 0 && serverTime > 0) {
-        targetTime = (localTime >= serverTime) ? localPos : serverPos;
-      } else if (localTime > 0 && localPos > 0) {
-        targetTime = localPos;
-      } else if (serverTime > 0 && serverPos > 0) {
-        targetTime = serverPos;
-      } else if (localPos > 0) {
-        targetTime = localPos;
-      } else if (serverPos > 0) {
-        targetTime = serverPos;
+      const reconciled = reconcileBookProgress(book.id, book);
+      if (reconciled.position > 0) {
+        targetTime = reconciled.position;
       } else if (book.chapters && book.chapters[chapterIndex]) {
         targetTime = this.getChapterStartTime(book.chapters[chapterIndex]);
       }
@@ -699,14 +633,8 @@ class PlayerController {
       this.fetchProgress(book.id).then(prog => {
         if (prog && prog.position !== undefined && prog.position !== null) {
           const freshPos = this.parsePosition(prog);
-          const freshTime = this.parseTimestamp(prog);
-          const localState = this.getLocalStorageProgress(book.id);
-          const localTime = this.parseTimestamp(localState);
-
-          // STRICT TIMESTAMP COMPARISON:
-          // Only replace playback position if the server timestamp is strictly NEWER than local
-          if (freshTime > localTime && freshPos >= 0) {
-            console.log(`[Aura] Server progress is newer (Server: ${freshTime}, Local: ${localTime}). Updating position to ${freshPos}s.`);
+          if (prog.isNewer && freshPos >= 0) {
+            console.log(`[Aura] Server progress is newer. Updating position to ${freshPos}s.`);
             book.position = freshPos;
             book.progressSeconds = freshPos;
             book.completed = prog.completed;
@@ -992,13 +920,7 @@ class PlayerController {
 
   async fetchProgress(audiobookId) {
     if (!audiobookId) return null;
-    let localResult = null;
-    try {
-      const stored = localStorage.getItem(`aura_progress_${audiobookId}`);
-      if (stored) {
-        localResult = JSON.parse(stored);
-      }
-    } catch (e) {}
+    const localResult = getLocalStorageProgress(audiobookId);
 
     const API_BASE = getApiBase();
     try {
@@ -1006,40 +928,19 @@ class PlayerController {
       if (response.ok) {
         const dbResult = await response.json();
         if (dbResult && dbResult.position !== undefined && dbResult.position !== null) {
-          const dbPos = this.parsePosition(dbResult);
-          const dbTime = this.parseTimestamp(dbResult);
-          const localPos = this.parsePosition(localResult);
-          const localTime = this.parseTimestamp(localResult);
-
-          // STRICT TIMESTAMP COMPARISON:
-          // The only check to replace the time is the timestamp and never the position.
-          if (localTime > dbTime && localPos >= 0) {
-            console.log(`[Aura] Local timestamp is newer than DB (${localTime} vs ${dbTime}). Retaining local position ${localPos}s.`);
-            dbResult.position = localPos;
-            dbResult.positionSeconds = localPos;
-            dbResult.completed = localResult.completed;
-            dbResult.updatedAt = new Date(localTime).toISOString();
-            // Background sync newer local progress to server so database catches up
-            this.syncProgressToBackend(audiobookId, localPos, !!localResult.completed);
-          } else if (dbTime >= localTime && dbPos >= 0) {
-            console.log(`[Aura] Server timestamp is newer or equal to DB (${dbTime} vs ${localTime}). Adopting server position ${dbPos}s.`);
-            if (audiobookId) {
-              const nowIso = dbResult.updatedAt || new Date(dbTime || Date.now()).toISOString();
-              const updateData = {
-                bookId: audiobookId,
-                position: dbPos,
-                positionSeconds: dbPos,
-                completed: !!dbResult.completed,
-                chapterIndex: localResult?.chapterIndex || 0,
-                timestamp: dbTime || Date.now(),
-                updatedAt: nowIso
-              };
-              try {
-                localStorage.setItem(`aura_progress_${audiobookId}`, JSON.stringify(updateData));
-              } catch (e) {}
-            }
+          const reconciled = reconcileBookProgress(audiobookId, dbResult);
+          if (reconciled.source === "local" && !reconciled.isNewer) {
+            // Local timestamp is strictly newer: sync local progress to server so database catches up
+            this.syncProgressToBackend(audiobookId, reconciled.position, !!reconciled.completed);
           }
-          return dbResult;
+          return {
+            ...dbResult,
+            position: reconciled.position,
+            positionSeconds: reconciled.position,
+            completed: reconciled.completed,
+            isNewer: reconciled.isNewer,
+            updatedAt: reconciled.updatedAt
+          };
         }
       }
     } catch (e) {
@@ -1152,24 +1053,7 @@ class PlayerController {
   }
 
   getLocalStorageProgress(bookId = null) {
-    try {
-      const key = bookId ? `aura_progress_${bookId}` : "aura_last_played_state";
-      const raw = localStorage.getItem(key);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (!parsed) return null;
-      const pos = this.parsePosition(parsed);
-      const ts = this.parseTimestamp(parsed);
-      return {
-        ...parsed,
-        position: pos,
-        positionSeconds: pos,
-        timestamp: ts,
-        updatedAt: parsed.updatedAt || (ts ? new Date(ts).toISOString() : new Date().toISOString())
-      };
-    } catch (e) {
-      return null;
-    }
+    return getLocalStorageProgress(bookId);
   }
 
   skip(seconds) {
