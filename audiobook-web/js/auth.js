@@ -24,6 +24,7 @@ export async function logoutUser() {
   if (player && typeof player.unloadBook === "function") {
     player.unloadBook();
   }
+  localStorage.removeItem("aura_last_played_state");
   setAuthenticatedUser(null);
   router.navigate("#login");
 }
