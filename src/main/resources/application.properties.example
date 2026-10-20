@@ -1,15 +1,45 @@
 spring.application.name=audiobooks
 
-spring.datasource.url=
+# ===============================
+# DATABASE CONFIGURATION
+# ===============================
+spring.datasource.url=jdbc:postgresql://localhost:5432/postgres
 spring.datasource.username=postgres
-spring.datasource.password=
+spring.datasource.password=your_db_password
 
+# ===============================
+# JPA / HIBERNATE
+# ===============================
 spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.format_sql=false
 
-# You can put any amount of time in here it's just how long you want a user's session to persist before needing to log in again
-server.servlet.session.cookie.max-age=30d
+# ===============================
+# SPRING SESSION (JDBC)
+# ===============================
+# Store HTTP sessions in the database so user logins survive server restarts
+spring.session.store-type=jdbc
+# Automatically create the SPRING_SESSION and SPRING_SESSION_ATTRIBUTES tables if missing
+# Options: always | on-init | never
+spring.session.jdbc.initialize-schema=always
 
+# ===============================
+# SESSION TIMEOUT & COOKIE
+# ===============================
+# How long the browser session cookie (JSESSIONID) remains valid (e.g. 30d, 90d)
+server.servlet.session.cookie.max-age=90d
+# Server-side inactivity expiration for persisted sessions
+server.servlet.session.timeout=90d
+
+# ===============================
+# FILE UPLOAD LIMITS
+# ===============================
 spring.servlet.multipart.max-file-size=5GB
 spring.servlet.multipart.max-request-size=5GB
+
+# ===============================
+# LOGGING (Optional)
+# ===============================
+logging.level.com.example.audiobooks=INFO
+logging.level.org.springframework.security=INFO
+logging.level.org.springframework.session=INFO
