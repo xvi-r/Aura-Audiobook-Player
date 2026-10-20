@@ -16,6 +16,7 @@ import com.example.audiobooks.repository.SeriesRepository;
 import com.example.audiobooks.repository.UserAudiobookRepository;
 import com.example.audiobooks.repository.UserRepository;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
@@ -47,6 +48,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
@@ -158,6 +160,16 @@ public class AudiobookService {
         userAudiobookRepository.save(userAudiobook);
         log.info("Audiobook imported successfully: id={}, title={}", audiobook.getId(), audiobook.getTitle());
 
+        try {
+            searchAsin(audiobook.getTitle(), audiobook.getAuthor())
+                    .ifPresent(asin -> {
+                        log.info("Auto-enriching audiobook id={} with ASIN {}", audiobook.getId(), asin);
+                        enrichAudiobookByAsin(audiobook.getId(), asin, "us", true);
+                    });
+        } catch (Exception e) {
+            // Non-blocking: If Audible/Audnex is offline or fails, keep the local ffprobe data!
+            log.warn("Auto-enrichment skipped for audiobook id={}: {}", audiobook.getId(), e.getMessage());
+        }
     }
 
     private File extractCover(File audiobookFile, Path coverPath) throws IOException, InterruptedException {
@@ -436,4 +448,44 @@ public class AudiobookService {
         
     }
 
+    private String sanitizeTitle(String rawTitle) {
+        if (rawTitle == null) return "";
+        return rawTitle
+                .replaceAll("(?i)\\b(unabridged|abridged|audiobook|hq|mp3|m4b|flac)\\b", "")
+                .replaceAll("\\[.*?\\]|\\(.*?\\)", "") // removes (Unabridged) or [2021]
+                .replaceAll("[:\\-_/]", " ")          // replaces punctuation with spaces
+                .replaceAll("\\s+", " ")              // collapses multiple whitespace
+                .trim();
+    }
+
+    public Optional<String> searchAsin(String title, String author) {
+        String cleanTitle = sanitizeTitle(title);
+        if (cleanTitle.isBlank()) return Optional.empty();
+
+        String query = (author != null && !author.isBlank())
+                ? cleanTitle + " " + author.trim()
+                : cleanTitle;
+
+        try {
+            JsonNode root = restClient.get()
+                    .uri("https://api.audible.com/1.0/catalog/products?keywords={keywords}&num_results=1", query)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            if (root == null) return Optional.empty();
+
+            JsonNode products = root.path("products");
+
+            if (!products.isEmpty()) {
+                String asin = products.get(0).path("asin").asText(null);
+                log.info("Found Audible ASIN '{}' for query: '{}'", asin, query);
+                return Optional.ofNullable(asin);
+            } else {
+                log.info("No Audible match found for '{}'. Falling back to local file tags.", query);
+            }
+        } catch (Exception e) {
+            log.warn("Audible search failed for '{}': {}", query, e.getMessage());
+        }
+        return Optional.empty();
+    }
 }
