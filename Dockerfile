@@ -8,6 +8,9 @@ COPY mvnw .
 RUN ./mvnw dependency:go-offline -B || true
 
 COPY src src
+# Ensure safe template properties are used without baking local host secrets into the image
+RUN test -f src/main/resources/application.properties || cp src/main/resources/application.properties.example src/main/resources/application.properties
+
 RUN ./mvnw clean package -DskipTests
 
 # Runtime stage

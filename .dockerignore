@@ -2,9 +2,11 @@ target/
 .git/
 .github/
 .vscode/
+.idea/
 audiobook-web - Copy/
 audiobook-web - Latest backup/
 logs/
 app-data/
 *.log
 .mvn/wrapper/maven-wrapper.jar
+src/main/resources/application.properties

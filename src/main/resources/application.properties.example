@@ -3,9 +3,9 @@ spring.application.name=audiobooks
 # ===============================
 # DATABASE CONFIGURATION
 # ===============================
-spring.datasource.url=jdbc:postgresql://localhost:5432/postgres
-spring.datasource.username=postgres
-spring.datasource.password=your_db_password
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:postgres}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:your_db_password}
 
 # ===============================
 # JPA / HIBERNATE
@@ -26,10 +26,10 @@ spring.session.jdbc.initialize-schema=always
 # ===============================
 # SESSION TIMEOUT & COOKIE
 # ===============================
-# How long the browser session cookie (JSESSIONID) remains valid (e.g. 30d, 90d)
-server.servlet.session.cookie.max-age=90d
+# How long the browser session cookie (JSESSIONID) remains valid (e.g. 30d, 90d, 180d)
+server.servlet.session.cookie.max-age=180d
 # Server-side inactivity expiration for persisted sessions
-server.servlet.session.timeout=90d
+server.servlet.session.timeout=180d
 
 # ===============================
 # FILE UPLOAD LIMITS

@@ -16,11 +16,18 @@ services:
       retries: 5
 
   aura-app:
-    image: xvirr/aura-app:v0.7.9
+    image: xvirr/aura-app:v0.8.0
+    build: .
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/audiobooks
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_SESSION_STORE_TYPE: jdbc
+      SPRING_SESSION_JDBC_INITIALIZE_SCHEMA: always
+      SERVER_SERVLET_SESSION_TIMEOUT: 180d
+      SERVER_SERVLET_SESSION_COOKIE_MAX_AGE: 180d
+      SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: 5GB
+      SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 5GB
     ports:
       - "8080:8080"
     volumes:
