@@ -16,6 +16,26 @@ export function setAuthenticatedUser(username) {
   updateAuthSidebarUI();
 }
 
+export function clearUserSessionData() {
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+    if (
+      key.startsWith("aura_progress_") ||
+      key.startsWith("aura_has_epub_") ||
+      key === "aura_last_played_state" ||
+      key === "aura_favorites" ||
+      key === "aura_collections" ||
+      key === "aura_daily_stats" ||
+      key === "aura_library_tab"
+    ) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+}
+
 export async function logoutUser() {
   const API_BASE = getApiBase();
   try {
@@ -24,7 +44,7 @@ export async function logoutUser() {
   if (player && typeof player.unloadBook === "function") {
     player.unloadBook();
   }
-  localStorage.removeItem("aura_last_played_state");
+  clearUserSessionData();
   setAuthenticatedUser(null);
   router.navigate("#login");
 }
@@ -390,6 +410,10 @@ export function renderWhosListeningView() {
     card.addEventListener("click", () => {
       const username = card.getAttribute("data-username");
       if (username) {
+        if (player && typeof player.unloadBook === "function") {
+          player.unloadBook();
+        }
+        clearUserSessionData();
         setAuthenticatedUser(username);
         router.navigate("#library");
       }
