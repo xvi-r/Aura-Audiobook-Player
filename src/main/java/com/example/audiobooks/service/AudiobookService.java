@@ -157,6 +157,7 @@ public class AudiobookService {
 
         userAudiobookRepository.save(userAudiobook);
         log.info("Audiobook imported successfully: id={}, title={}", audiobook.getId(), audiobook.getTitle());
+
     }
 
     private File extractCover(File audiobookFile, Path coverPath) throws IOException, InterruptedException {
@@ -324,7 +325,9 @@ public class AudiobookService {
         audiobook.setAuthor(response.getAuthors().get(0).getName());
         audiobook.setNarrator(response.getNarrators().get(0).getName());
         audiobook.setCoverPath(downloadCover(response.getImage(), audiobookId));
-        audiobook.setDuration(response.getRuntimeLengthMin() * 60);
+                if (audiobook.getDuration() == null || audiobook.getDuration() <= 0) {
+            audiobook.setDuration(response.getRuntimeLengthMin() * 60);
+        }
 
         if (response.getSeriesPrimary() != null) {
 
@@ -352,16 +355,38 @@ public class AudiobookService {
                 .uri("https://api.audnex.us/books/{asin}/chapters?region={country}", asin, country)
                 .retrieve()
                 .body(AudnexChaptersResponseDto.class);
-        
+
+        if (response == null || response.chapters() == null || response.chapters().isEmpty()) {
+            return;
+        }
+
+        // Calculate proportional scaling ratio to absorb cumulative timeline drift
+        double scaleRatio = 1.0;
+        AudnexChapterDto lastChapter = response.chapters().get(response.chapters().size() - 1);
+        double audnexTotalSec = (double) (lastChapter.startOffsetMs() + lastChapter.lengthMs()) / 1000.0;
+
+        if (audiobook.getDuration() != null && audiobook.getDuration() > 0 && audnexTotalSec > 0) {
+            double ratio = audiobook.getDuration() / audnexTotalSec;
+            // Only apply scaling if within a reasonable +/- 5% range (avoids mis-scaling split/partial files)
+            if (ratio >= 0.95 && ratio <= 1.05) {
+                scaleRatio = ratio;
+                log.info("Calibrating chapter timestamps with scale ratio {}: fileDuration={}s, audnexTotal={}s",
+                        scaleRatio, audiobook.getDuration(), audnexTotalSec);
+            }
+        }
+
         List<Chapter> newChapters = new ArrayList<>();
 
         for (int i = 0; i < response.chapters().size(); i++) {
             AudnexChapterDto chapter = response.chapters().get(i);
 
+            double startTime = ((double) chapter.startOffsetMs() / 1000.0) * scaleRatio;
+            double endTime = ((double) (chapter.startOffsetMs() + chapter.lengthMs()) / 1000.0) * scaleRatio;
+
             Chapter newChapter = Chapter.builder()
                     .title(chapter.title())
-                    .startTimeMs((double) chapter.startOffsetSec())
-                    .endTimeMs((double) chapter.startOffsetSec() + chapter.lengthMs() / 1000)
+                    .startTimeMs(startTime)
+                    .endTimeMs(endTime)
                     .chapterNumber(i + 1)
                     .audiobook(audiobook)
                     .build();
@@ -410,4 +435,5 @@ public class AudiobookService {
         fileStorageService.delete("app-data/audiobooks/" + audiobook.getId());
         
     }
+
 }
