@@ -7,17 +7,43 @@
   padding: 0;
 }
 
+/* Allow background to bleed edge-to-edge */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  min-height: 100dvh; /* accounts for dynamic viewport */
+  background-color: var(--bg-primary, #121212);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   font-family: var(--font-family);
-  background-color: var(--bg-primary);
   color: var(--text-main);
-  height: 100vh;
-  width: 100vw;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* For fixed bottom navbars, tab bars, or footers:
+   Extend the background to the physical edge, but pad the clickable controls above the bar */
+.bottom-nav,
+footer {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* If headers are colliding with the Notch or Dynamic Island: */
+header,
+.top-nav {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* Hide scrollbars globally across all browsers while maintaining full scroll capability */
@@ -224,28 +250,104 @@ body {
   }
 }
 
-/* Responsive sidebar */
+/* Auth Mode - Clean Presentation when unauthenticated */
+body.auth-mode #sidebar,
+body.auth-mode #mobile-nav-bar,
+body.auth-mode #audio-player-bar {
+  display: none !important;
+}
+
+body.auth-mode #main-content {
+  padding: 24px 16px env(safe-area-inset-bottom, 24px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100dvh !important;
+  width: 100% !important;
+  overflow-y: auto !important;
+}
+
+/* Mobile Navigation Bar */
+#mobile-nav-bar {
+  display: none;
+}
+
+/* Responsive sidebar and mobile layout */
 @media (max-width: 768px) {
   #sidebar {
-    width: 60px;
-    padding: 16px 4px;
+    display: none !important;
   }
-  .logo-text, .nav-label, .user-info, .user-widget {
-    display: none;
+
+  #main-content {
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 14px calc(64px + env(safe-area-inset-bottom, 24px)) !important;
+    width: 100%;
+    box-sizing: border-box;
   }
-  .logo-container {
+
+  body.has-mini-player #main-content {
+    padding-bottom: calc(125px + env(safe-area-inset-bottom, 24px)) !important;
+  }
+
+  body.on-now-playing #main-content {
+    padding: 0 !important;
+  }
+
+  #mobile-nav-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(52px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+    background: rgba(18, 18, 20, 0.98);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border-top: 0.5px solid rgba(255, 255, 255, 0.12);
+    z-index: 999;
+    align-items: center;
+    justify-content: space-around;
+  }
+
+  /* Seamless glass-bleed beneath nav bar to completely prevent chin gap */
+  #mobile-nav-bar::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 120px;
+    background: rgba(18, 18, 20, 0.96);
+    pointer-events: none;
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    margin-bottom: 20px;
-    padding-left: 0;
+    gap: 3px;
+    color: rgba(255, 255, 255, 0.55);
+    text-decoration: none;
+    font-size: 0.65rem;
+    font-weight: 600;
+    flex: 1;
+    height: 52px;
+    transition: color var(--transition-quick);
+    -webkit-tap-highlight-color: transparent;
   }
-  .nav-item a {
-    justify-content: center;
-    padding: 8px;
+
+  .mobile-nav-item i,
+  .mobile-nav-item svg {
+    width: 20px;
+    height: 20px;
   }
-  .nav-item.active a {
-    border-radius: var(--radius-sm);
-    border-left: none;
-    background: var(--bg-surface);
+
+  .mobile-nav-item.active {
+    color: var(--accent-primary);
+    font-weight: 700;
   }
 }
 
@@ -292,6 +394,7 @@ body {
 .splash-logo {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   font-size: 1.8rem;
   font-weight: 800;
