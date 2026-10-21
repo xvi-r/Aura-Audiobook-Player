@@ -522,8 +522,8 @@
   margin-top: -2px; /* Center thumb vertically relative to 4px track */
 }
 
-/* Responsive Player Layout */
-@media (max-width: 900px) {
+/* Responsive Tablet Player Layout (769px to 900px) */
+@media (max-width: 900px) and (min-width: 769px) {
   #audio-player-bar {
     grid-template-columns: 1fr 1fr;
     height: 110px;
@@ -547,25 +547,153 @@
   }
 }
 
-@media (max-width: 600px) {
+/* Modern Mobile Floating Mini-Player for <= 768px (iOS / PWA App Style) */
+@media (max-width: 768px) {
   #audio-player-bar {
-    grid-template-columns: 1fr;
-    height: auto;
-    padding: 12px;
+    position: fixed;
+    bottom: calc(52px + env(safe-area-inset-bottom, 0px) + 8px);
+    left: 10px;
+    right: 10px;
+    height: 54px;
+    border-radius: 14px;
+    background: rgba(28, 28, 30, 0.96);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 0.5px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
+    display: flex !important;
+    align-items: center;
+    padding: 0 14px 0 8px;
+    z-index: 990;
+    overflow: hidden;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #audio-player-bar[style*="display: none"] {
+    display: none !important;
+  }
+
+  .player-track-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .player-thumbnail {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .player-metadata {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .player-track-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+
+  .player-track-author {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .player-track-chapter {
+    display: none;
+  }
+
+  /* Controls (play/pause and skips) removed on mobile mini bar as requested */
+  .player-controls-hub {
+    display: none !important;
+  }
+
+  .player-buttons {
+    display: flex;
+    align-items: center;
     gap: 8px;
   }
+
+  #p-prev-chapter,
+  #p-next-chapter {
+    display: none !important;
+  }
+
+  .player-btn-play {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .player-btn-play i,
+  .player-btn-play svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .player-btn-secondary i,
+  .player-btn-secondary svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Sleek accent progress line along the bottom of the mini-player */
   .player-timeline-container {
-    grid-column: 1;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    padding: 0;
+    margin: 0;
+    max-width: 100%;
+    pointer-events: none;
   }
-  .player-track-info {
-    grid-column: 1;
-    justify-content: center;
+
+  .player-timeline-container .time-label,
+  .player-timeline-container .player-view-mode-btn {
+    display: none !important;
   }
+
+  .timeline-slider-wrapper {
+    height: 2px;
+    padding: 0;
+    margin: 0;
+  }
+
+  .timeline-slider {
+    height: 2px;
+    border-radius: 0;
+    pointer-events: none;
+  }
+
+  .timeline-slider::-webkit-slider-thumb {
+    display: none !important;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
   .player-utilities {
-    grid-column: 1;
-    justify-content: center;
-  }
-  .player-controls-hub {
-    grid-column: 1;
+    display: none !important;
   }
 }
