@@ -9,7 +9,7 @@ import { renderFavorites } from "./favorites.js";
 import { renderEqualizer } from "./equalizer.js";
 import { renderSettings } from "./settings.js";
 import { renderUpload } from "./upload.js";
-import { renderAuthView, renderWhosListeningView, updateAuthSidebarUI } from "./auth.js";
+import { renderAuthView, renderWhosListeningView, updateAuthSidebarUI, getAuthenticatedUser, checkAuthSession, syncShellUI } from "./auth.js";
 import { renderSetupView } from "./setup.js";
 import { getApiBase, fetchWithTimeout } from "./config.js";
 
@@ -68,13 +68,18 @@ const setupKeyboardShortcuts = () => {
   });
 };
 
-const initApp = () => {
+const initApp = async () => {
   // Apply saved visual theme and accent highlight on startup
   applyThemeAndAccent();
   window.addEventListener("aura-settings-changed", applyThemeAndAccent);
 
   // Setup global hotkeys
   setupKeyboardShortcuts();
+
+  // Initial Lucide icon render for static shell and mobile navigation bar
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
 
   // 1. Initialize Player Controllers
   player.init();
@@ -86,14 +91,20 @@ const initApp = () => {
     if (!playerBar) return;
     let isSessionActive = false;
     try { isSessionActive = sessionStorage.getItem("aura_playbar_active") === "true"; } catch (e) {}
-    if (hideForNowPlaying || !player.currentBook || player.isPlayerHiddenByLogout || !isSessionActive) {
+
+    const shouldHide = hideForNowPlaying || !player.currentBook || player.isPlayerHiddenByLogout || !isSessionActive;
+
+    document.body.classList.toggle("has-mini-player", !shouldHide);
+    document.body.classList.toggle("on-now-playing", hideForNowPlaying);
+
+    if (shouldHide) {
       playerBar.style.display = "none";
       if (sidebar) sidebar.style.paddingBottom = "20px";
-      if (mainContent) mainContent.style.paddingBottom = "32px";
+      if (mainContent && window.innerWidth > 768) mainContent.style.paddingBottom = "32px";
     } else {
       playerBar.style.display = "grid";
       if (sidebar) sidebar.style.paddingBottom = "110px";
-      if (mainContent) mainContent.style.paddingBottom = "110px";
+      if (mainContent && window.innerWidth > 768) mainContent.style.paddingBottom = "110px";
     }
   };
 
@@ -105,6 +116,34 @@ const initApp = () => {
   window.addEventListener("audiobook-play-state-change", () => {
     const isNowPlaying = window.location.pathname === "/now-playing" || window.location.hash === "#now-playing";
     syncBottomPlayerBar(isNowPlaying);
+  });
+
+  // Handle Unauthorized (401) global session expirations
+  window.addEventListener("aura-unauthorized", () => {
+    if (player && typeof player.unloadBook === "function") {
+      player.unloadBook();
+    }
+    syncShellUI("/login");
+    router.navigate("/login");
+  });
+
+  // Route Authentication & Access Guard
+  router.setGuard((targetPath) => {
+    const publicRoutes = ["/login", "/register", "/setup"];
+    const isPublic = publicRoutes.some(p => targetPath === p || targetPath.startsWith(p + "/"));
+    const user = getAuthenticatedUser();
+
+    if (!user) {
+      if (!isPublic) {
+        console.log(`[Aura Guard] Unauthenticated access to ${targetPath}. Redirecting to /login...`);
+        return "/login";
+      }
+    } else {
+      if (targetPath === "/login" || targetPath === "/register") {
+        return "/library";
+      }
+    }
+    return null;
   });
 
   // 2. Setup Routes
@@ -236,23 +275,25 @@ const initApp = () => {
     syncBottomPlayerBar(false);
   });
 
-  // Update Auth State in Sidebar
+  // 3. Verify server session & setup status
+  try {
+    await checkAuthSession();
+  } catch (e) {}
+
+  syncShellUI(window.location.pathname);
   updateAuthSidebarUI();
 
-  // 3. Check Server Setup Status
-  (async () => {
-    try {
-      const API_BASE = getApiBase();
-      const res = await fetchWithTimeout(`${API_BASE}/setup/status`, {}, 2500);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.setupCompleted === false && window.location.pathname !== "/setup") {
-          console.log("[Aura App] Server setup required. Redirecting to /setup...");
-          router.navigate("/setup");
-        }
+  try {
+    const API_BASE = getApiBase();
+    const res = await fetchWithTimeout(`${API_BASE}/setup/status`, {}, 2500);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.setupCompleted === false && window.location.pathname !== "/setup") {
+        console.log("[Aura App] Server setup required. Redirecting to /setup...");
+        router.navigate("/setup");
       }
-    } catch (e) {}
-  })();
+    }
+  } catch (e) {}
 
   // 4. Initialize Router
   router.init();
@@ -262,6 +303,18 @@ const initApp = () => {
 
   // 6. Smooth Curtain Reveal (dismiss splash screen overlay once initial render completes)
   dismissSplashScreen();
+
+  // 7. Register Service Worker for PWA (iOS standalone / Android)
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js")
+        .then((reg) => {
+          console.log("[Aura PWA] Service Worker registered:", reg.scope);
+          reg.update();
+        })
+        .catch((err) => console.warn("[Aura PWA] Service Worker registration failed:", err));
+    });
+  }
 };
 
 function dismissSplashScreen() {
@@ -284,13 +337,14 @@ if (document.readyState === "loading") {
 
 function cleanupPreviousView() {
   const container = document.getElementById("main-content");
-  const sidebar = document.getElementById("sidebar");
-  if (sidebar) sidebar.style.display = "";
+  syncShellUI(window.location.pathname);
   if (container) {
     container.style.overflowY = "";
-    container.style.padding = "";
-    container.style.maxWidth = "";
-    container.style.margin = "";
+    if (getAuthenticatedUser()) {
+      container.style.padding = "";
+      container.style.maxWidth = "";
+      container.style.margin = "";
+    }
   }
   if (container && container.cleanupDetailsListeners) {
     container.cleanupDetailsListeners();
@@ -303,6 +357,18 @@ function updateActiveSidebar(path) {
   navItems.forEach((item) => {
     const link = item.querySelector("a");
     if (link && link.getAttribute("href") === path) {
+      item.classList.add("active");
+    } else {
+      item.classList.remove("active");
+    }
+  });
+
+  const mobileItems = document.querySelectorAll(".mobile-nav-item");
+  mobileItems.forEach((item) => {
+    const href = item.getAttribute("href");
+    if (href === path || (path && path.startsWith(href) && href !== "/" && href !== "/library")) {
+      item.classList.add("active");
+    } else if (href === "/library" && (path === "/library" || path === "/" || path.startsWith("/book/"))) {
       item.classList.add("active");
     } else {
       item.classList.remove("active");
