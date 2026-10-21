@@ -1,6 +1,16 @@
 // Settings Page Module - Theme Configurator, Visual FX & Settings Toggles
 import { router } from "./router.js";
 import { getApiBase } from "./config.js";
+import { player } from "./player.js";
+
+const EQ_PRESETS = [
+  { id: "vocal", name: "Vocal Boost", gains: [-2, -1, 0, 1, 2, 4, 4, 3, 1, 0] },
+  { id: "podcast", name: "Spoken Word", gains: [-4, -3, -1, 1, 3, 4, 3, 2, 0, -1] },
+  { id: "flat", name: "Flat Sound", gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  { id: "bass", name: "Bass Boost", gains: [6, 5, 4, 2, 0, -1, 0, 1, 1, 0] },
+  { id: "treble", name: "Treble Detail", gains: [-2, -1, 0, 0, 1, 2, 3, 5, 4, 3] },
+  { id: "night", name: "Late Night", gains: [2, 2, 1, 0, -1, -2, -2, -3, -4, -5] }
+];
 
 const BASES = [
   { id: "midnight", name: "Midnight Obsidian", className: "base-midnight", previewBg: "#121212", previewText: "#edeae6" },
@@ -33,6 +43,12 @@ export const renderSettings = () => {
   const currentBase = localStorage.getItem("aura_base_theme") || "base-midnight";
   const currentAccent = localStorage.getItem("aura_accent_color") || "accent-orange";
   const currentDensity = localStorage.getItem("aura_grid_density") || "8";
+  const eqEnabled = !!player.eqEnabled;
+  const eqPresetsHtml = EQ_PRESETS.map(p => `
+    <button class="settings-eq-preset-btn" data-gains='${JSON.stringify(p.gains)}' style="background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 8px 10px; border-radius: var(--radius-sm); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: var(--transition-quick); -webkit-tap-highlight-color: transparent;">
+      ${p.name}
+    </button>
+  `).join("");
 
   const ambientGlow = localStorage.getItem("aura_setting_ambient_glow") !== "false";
   const animatedWaveform = localStorage.getItem("aura_setting_animated_waveform") !== "false";
@@ -165,8 +181,43 @@ export const renderSettings = () => {
         </div>
       </section>
 
-      <!-- Section 4: Library Grid Density (4 - 6 - 8 - 10 Books per Row) -->
+      <!-- Section: Audio Equalizer Studio -->
       <section class="settings-section" style="margin-bottom: 28px;">
+        <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="sliders" style="color: var(--accent-primary); width: 18px; height: 18px;"></i>
+          Audio Equalizer
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+          Fine-tune audio frequencies or select spoken-word acoustic presets to enhance clarity and listening comfort.
+        </p>
+
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; max-width: 520px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);">Equalizer Processing</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${eqEnabled ? 'Active and processing audio' : 'Bypassed (default audio)'}</div>
+            </div>
+            <button id="settings-eq-toggle" style="background: ${eqEnabled ? 'var(--accent-primary)' : 'var(--bg-surface)'}; color: ${eqEnabled ? 'white' : 'var(--text-muted)'}; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 6px 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: var(--transition-quick); -webkit-tap-highlight-color: transparent;">
+              ${eqEnabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Acoustic Presets</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px;">
+              ${eqPresetsHtml}
+            </div>
+          </div>
+
+          <button id="settings-open-full-eq" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: var(--transition-quick); margin-top: 4px; -webkit-tap-highlight-color: transparent;">
+            <i data-lucide="sliders" style="width: 15px; height: 15px; color: var(--accent-primary);"></i>
+            <span>Open 10-Band Equalizer Studio</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Section 4: Library Grid Density (Desktop Only) -->
+      <section class="settings-section desktop-only" style="margin-bottom: 28px;">
         <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
           <i data-lucide="layout-grid" style="color: var(--accent-primary); width: 18px; height: 18px;"></i>
           Library Grid Density
@@ -195,8 +246,8 @@ export const renderSettings = () => {
         </div>
       </section>
 
-      <!-- Section 5: Keyboard Shortcuts Cheat Sheet -->
-      <section class="settings-section">
+      <!-- Section 5: Keyboard Shortcuts Cheat Sheet (Desktop Only) -->
+      <section class="settings-section desktop-only">
         <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
           <i data-lucide="keyboard" style="color: var(--accent-primary); width: 18px; height: 18px;"></i>
           Keyboard Shortcuts
@@ -276,6 +327,34 @@ export const renderSettings = () => {
       renderSettings();
     });
   });
+
+  // Equalizer controls event handlers
+  const eqToggleBtn = document.getElementById("settings-eq-toggle");
+  if (eqToggleBtn) {
+    eqToggleBtn.addEventListener("click", () => {
+      const nextState = !player.eqEnabled;
+      player.setEqEnabled(nextState);
+      renderSettings();
+    });
+  }
+
+  container.querySelectorAll(".settings-eq-preset-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      try {
+        const gains = JSON.parse(btn.dataset.gains);
+        player.setEqEnabled(true);
+        player.applyEqPreset(gains);
+        renderSettings();
+      } catch (err) {}
+    });
+  });
+
+  const openEqBtn = document.getElementById("settings-open-full-eq");
+  if (openEqBtn) {
+    openEqBtn.addEventListener("click", () => {
+      router.navigate("/equalizer");
+    });
+  }
 
   // Server URL save button handler
   const saveServerBtn = document.getElementById("save-server-url-btn");

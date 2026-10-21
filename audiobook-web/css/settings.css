@@ -118,3 +118,15 @@
   color: var(--accent-primary);
   flex-shrink: 0;
 }
+
+
+@media (max-width: 768px) {
+  .settings-section.desktop-only,
+  .desktop-only {
+    display: none !important;
+  }
+  .settings-section {
+    padding: 16px 14px;
+    border-radius: var(--radius-md);
+  }
+}
