@@ -9,8 +9,16 @@
   z-index: 1;
 }
 
+.details-mobile-actions {
+  display: none !important;
+}
+
 .back-btn-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
+  width: 100%;
 }
 
 .back-btn {
@@ -535,7 +543,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  max-height: 253px;
+  max-height: 480px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -625,31 +633,155 @@
   .details-container {
     padding: 0;
   }
+  /* Hide unnecessary Back to Library button on mobile */
+  .back-btn,
+  #btn-back-lib {
+    display: none !important;
+  }
+  .back-btn-container {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    margin-bottom: 10px !important;
+    width: 100% !important;
+  }
+  .details-top-icon-actions {
+    display: none !important;
+  }
+  .details-mobile-actions {
+    display: block !important;
+  }
   .details-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 16px;
+    align-items: center;
+    padding-bottom: 24px !important;
   }
   .details-artwork-col {
-    max-width: 200px;
+    max-width: 260px;
     margin: 0 auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .details-cover {
+    width: 240px;
+    height: 240px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+    margin: 0 auto;
+  }
+  /* Resume/Play button exact same width as the book cover */
+  .details-actions {
+    width: 240px !important;
+    max-width: 240px !important;
+    margin: 12px auto 0 auto !important;
+  }
+  .btn-primary-play {
+    width: 240px !important;
+    max-width: 240px !important;
+    height: 48px;
+    font-size: 0.94rem;
+    font-weight: 700;
+    border-radius: 12px;
+  }
+  /* Remove Restart button on mobile */
+  .details-secondary-actions,
+  #details-reset-btn {
+    display: none !important;
+  }
+  .details-content-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+  .details-title-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
     width: 100%;
   }
   .details-title {
-    font-size: 1.4rem;
+    font-size: 1.45rem;
+    font-weight: 800;
     text-align: center;
+    margin-bottom: 6px;
+  }
+  .details-series-tag {
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin-bottom: 6px;
   }
   .details-creators {
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
     text-align: center;
+    gap: 4px;
+    width: 100%;
+    font-size: 0.88rem;
   }
   .details-meta-row {
+    display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    align-items: center;
     gap: 8px;
+    margin: 12px auto;
+    width: 100%;
   }
-  .details-meta-pill {
-    padding: 6px 10px;
-    font-size: 0.75rem;
+  .details-synopsis-section {
+    width: 100%;
+    text-align: left;
+  }
+  .details-chapters-section {
+    width: 100%;
+    text-align: left;
+  }
+  /* Mobile Chapters Table Overhaul */
+  .chapters-section {
+    width: 100%;
+    margin-top: 8px;
+  }
+  .chapters-header-row {
+    padding: 0 4px 10px 4px;
+  }
+  .chapters-header-row h3 {
+    font-size: 0.98rem;
+    font-weight: 800;
+  }
+  .chapters-list {
+    max-height: none !important;
+    overflow: visible !important;
+    margin-bottom: 24px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  }
+  .chapter-item {
+    min-height: 52px;
+    padding: 13px 16px;
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .chapter-title {
+    font-size: 0.92rem;
+    font-weight: 500;
+  }
+  .chapter-duration {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+  .chapter-item.active {
+    background: rgba(242, 125, 17, 0.12);
+    border-left: 3px solid var(--accent-primary);
   }
   .edit-modal-card {
     max-width: 95vw;
