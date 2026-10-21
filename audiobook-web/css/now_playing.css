@@ -1,7 +1,10 @@
 /* Immersive Now Playing View - Spotify & Audible Hybrid */
 
-/* Force-hide persistent bottom player bar while on Now Playing page */
-#app-container:has(.np-player-container) ~ #audio-player-bar {
+/* Force-hide persistent bottom player bar and mobile nav while on Now Playing page */
+#app-container:has(.np-player-container) ~ #audio-player-bar,
+#app-container:has(.np-player-container) ~ #mobile-nav-bar,
+body.on-now-playing #audio-player-bar,
+body.on-now-playing #mobile-nav-bar {
   display: none !important;
 }
 
@@ -35,7 +38,7 @@
   transition: background 1.5s ease-in-out;
 }
 
-/* Top Action Bar (Mini Player / Pop-out trigger) */
+/* Top Action Bar (Desktop: Absolute top right Mini Player trigger) */
 .np-top-action-bar {
   position: absolute;
   top: 24px;
@@ -74,6 +77,14 @@
   width: 14px;
   height: 14px;
   color: var(--accent-primary);
+}
+
+.mobile-only {
+  display: none !important;
+}
+
+.desktop-only {
+  display: inline-flex !important;
 }
 
 /* Centered Player Card Content */
@@ -293,11 +304,35 @@
   padding: 6px 10px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: var(--transition-quick);
+  position: relative;
 }
 
 .np-utilities-toolbar .util-btn:hover {
   background: var(--bg-surface-hover);
   border-color: var(--text-muted);
+  color: var(--text-main);
+}
+
+.np-utilities-toolbar .util-btn.active {
+  background: var(--bg-surface-hover);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.np-utilities-toolbar .util-btn i,
+.np-utilities-toolbar .util-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .np-utilities-toolbar .volume-container {
@@ -305,9 +340,12 @@
   border: 1px solid var(--border-color);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* Scrollable popover list for Now Playing chapters */
+/* Scrollable popover list for Now Playing chapters on desktop */
 .np-chapters-popup {
   min-width: 260px !important;
   max-width: 380px !important;
@@ -335,6 +373,173 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Chapters Slide-Up Sheet / Modal */
+.np-chapters-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.np-chapters-sheet-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.np-chapters-sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 75vh;
+  background: rgba(18, 21, 28, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  box-sizing: border-box;
+}
+
+.np-chapters-sheet-backdrop.active .np-chapters-sheet {
+  transform: translateY(0);
+}
+
+.np-sheet-handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 10px auto 4px auto;
+  flex-shrink: 0;
+}
+
+.np-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.np-sheet-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.np-sheet-title-group h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.np-sheet-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.np-sheet-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-quick);
+}
+
+.np-sheet-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+}
+
+.np-sheet-list {
+  padding: 8px 12px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.np-sheet-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  min-height: 48px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-main);
+  transition: var(--transition-quick);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.np-sheet-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.np-sheet-item.active {
+  background: rgba(242, 125, 17, 0.14);
+  border-color: rgba(242, 125, 17, 0.35);
+  color: var(--accent-primary);
+}
+
+.np-sheet-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.np-sheet-item-left i, .np-sheet-item-left svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--accent-primary);
+}
+
+.np-sheet-item-title {
+  font-size: 0.92rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-sheet-item.active .np-sheet-item-title {
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+.np-sheet-item-dur {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  margin-left: 10px;
 }
 
 /* Empty State / Placeholder View */
@@ -467,58 +672,142 @@
 }
 
 @media (max-width: 768px) {
-  .now-playing-container {
-    padding: 16px 12px 30px;
-    justify-content: flex-start;
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: flex !important;
+  }
+  .np-player-container {
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px)) 16px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .np-top-action-bar {
+    position: static !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 440px !important;
+    margin: 0 auto 16px auto !important;
+    text-align: center !important;
+  }
+  .np-header-brand {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    text-align: center !important;
+  }
+  .np-header-brand-title {
+    font-size: 0.76rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 2px !important;
+    color: var(--text-muted) !important;
+    text-align: center !important;
+  }
+  .np-player-card {
+    width: 100% !important;
+    max-width: 380px !important;
+    margin: auto auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
   }
   .np-artwork-wrapper {
-    width: min(240px, 35vh);
-    height: min(240px, 35vh);
-    margin-bottom: 14px;
+    width: min(260px, 32vh) !important;
+    height: min(260px, 32vh) !important;
+    border-radius: 16px;
+    margin: 0 auto 14px auto;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
   }
   .np-title-label {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 3px;
   }
   .np-author-label {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+  .np-chapter-badge {
+    margin: 6px auto 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .np-scrubber-section {
+    width: 100%;
+    margin-top: 8px;
+    margin-bottom: 8px;
   }
   .np-controls-section {
-    gap: 12px;
+    gap: 16px;
+    margin: 10px 0 14px 0;
   }
   .np-ctrl-btn {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
+  }
+  .player-btn-skip-container {
+    width: 44px;
+    height: 44px;
   }
   .np-play-btn {
-    width: 52px;
-    height: 52px;
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    box-shadow: 0 8px 24px rgba(242, 125, 17, 0.4);
+  }
+  .np-play-btn i,
+  .np-play-btn svg {
+    width: 28px;
+    height: 28px;
   }
   .np-utilities-toolbar {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 16px !important;
+    width: 100% !important;
+    max-width: 320px !important;
+    margin: 0 auto !important;
+    padding-top: 6px !important;
+    border-top: none !important;
   }
-}
-
-@media (max-width: 480px) {
-  .np-artwork-wrapper {
-    width: 200px;
-    height: 200px;
-    margin-bottom: 14px;
+  /* Pure rounded symbols without text on mobile */
+  .np-utilities-toolbar .util-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
-  .np-title-label {
-    font-size: 1.15rem;
+  .np-utilities-toolbar .util-btn .btn-text {
+    display: none !important;
   }
-  .np-controls-section {
-    gap: 10px;
+  .np-utilities-toolbar .util-btn i,
+  .np-utilities-toolbar .util-btn svg {
+    width: 20px !important;
+    height: 20px !important;
   }
-  .np-utilities-toolbar {
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
+  /* Remove volume slider on mobile completely */
+  .np-desktop-volume,
   .np-utilities-toolbar .volume-container {
-    width: 100%;
-    justify-content: center;
+    display: none !important;
   }
 }
