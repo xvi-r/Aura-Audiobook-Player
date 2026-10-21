@@ -73,6 +73,7 @@ class PlayerController {
     this.cacheDOMElements();
     this.attachEventListeners();
     this.attachAudioListeners();
+    this.setupMediaSession();
     this.setVolume(this.volume);
 
     const API_BASE = getApiBase();
@@ -180,6 +181,15 @@ class PlayerController {
         e.preventDefault();
         e.stopPropagation();
         popoutManager.toggle();
+      });
+    }
+
+    // Clicking bottom bar opens Now Playing view
+    if (this.playerBar) {
+      this.playerBar.addEventListener("click", (e) => {
+        if (!e.target.closest("button") && !e.target.closest("input")) {
+          window.location.hash = "#now-playing";
+        }
       });
     }
 
@@ -539,9 +549,12 @@ class PlayerController {
         ? this.audio.currentTime
         : (this.currentBook.position || this.currentBook.progressSeconds || 0));
 
+    // Tolerance of 0.25s (250ms) absorbs MP3/AAC audio frame alignment rounding
+    // so seeking to chapter start doesn't undershoot and evaluate to previous chapter
+    const epsilon = 0.25;
     for (let i = this.currentBook.chapters.length - 1; i >= 0; i--) {
       const start = this.getChapterStartTime(this.currentBook.chapters[i]);
-      if (secs >= start) {
+      if (secs + epsilon >= start) {
         return i;
       }
     }
@@ -652,7 +665,16 @@ class PlayerController {
       });
     }
 
-    this.currentChapterIndex = this.getCurrentChapterIndex();
+    // Auto-sort chapters logically in ascending order of chapter number / start time
+    if (book.chapters && Array.isArray(book.chapters)) {
+      this.sortChapters(book.chapters);
+    }
+
+    if (chapterIndex !== undefined && chapterIndex !== null && chapterIndex >= 0 && book.chapters && book.chapters[chapterIndex]) {
+      this.currentChapterIndex = chapterIndex;
+    } else {
+      this.currentChapterIndex = this.getCurrentChapterIndex();
+    }
 
     // Determine audio source URL
     let audioSrc = "";
@@ -668,29 +690,62 @@ class PlayerController {
     const currentSrc = this.audio.src || "";
     const needsNewSource = !currentSrc || currentSrc === window.location.href || !currentSrc.includes(audioSrc);
 
-    // Auto-sort chapters logically in ascending order of chapter number / start time
-    if (book.chapters && Array.isArray(book.chapters)) {
-      this.sortChapters(book.chapters);
-    }
-
     const doSeekAndPlay = () => {
       console.log("[Aura] doSeekAndPlay: targetTime=" + targetTime + ", readyState=" + this.audio.readyState + ", duration=" + this.audio.duration);
-      try {
-        if (targetTime >= 0 && isFinite(targetTime)) {
-          this.audio.currentTime = targetTime;
-        }
-      } catch (e) {
-        console.warn("[Aura] Seek error:", e);
+      this.isUserSeeking = true;
+
+      if (chapterIndex !== undefined && chapterIndex !== null && chapterIndex >= 0 && book.chapters && book.chapters[chapterIndex]) {
+        this.currentChapterIndex = chapterIndex;
+      } else {
+        this.currentChapterIndex = this.getCurrentChapterIndex();
       }
-      this.pendingTargetTime = null;
-      this.currentChapterIndex = this.getCurrentChapterIndex();
+
       this.audio.playbackRate = this.playbackSpeed;
-      if (autoPlay) {
-        this.play();
+
+      const triggerPlayback = () => {
+        if (autoPlay) {
+          this.play();
+        }
+        this.updateUI();
+        this.notifyTrackChange();
+        this.notifyTimeUpdate();
+
+        if (this.seekTimer) clearTimeout(this.seekTimer);
+        this.seekTimer = setTimeout(() => {
+          this.pendingTargetTime = null;
+          this.isUserSeeking = false;
+          this.updatePlaybackProgressUI();
+        }, 300);
+      };
+
+      if (targetTime > 0 && isFinite(targetTime)) {
+        // Temporarily mute to prevent any 0:00 audio flash before the seek lands on iOS/WebKit
+        const originalMuted = this.audio.muted;
+        this.audio.muted = true;
+        try {
+          this.audio.currentTime = targetTime;
+        } catch (e) {
+          console.warn("[Aura] Seek error:", e);
+        }
+
+        let seekHandled = false;
+        const onSeeked = () => {
+          if (seekHandled) return;
+          seekHandled = true;
+          this.audio.removeEventListener("seeked", onSeeked);
+          this.audio.muted = originalMuted;
+          triggerPlayback();
+        };
+
+        this.audio.addEventListener("seeked", onSeeked, { once: true });
+        // Failsafe timeout in case seeked is synchronous or already completed
+        setTimeout(onSeeked, 80);
+      } else {
+        try {
+          this.audio.currentTime = 0;
+        } catch (e) {}
+        triggerPlayback();
       }
-      this.updateUI();
-      this.notifyTrackChange();
-      this.notifyTimeUpdate();
     };
 
     if (needsNewSource) {
@@ -1083,12 +1138,14 @@ class PlayerController {
     
     // Hold user seeking guard so background timeupdate doesn't overwrite UI with old position while audio seeks
     this.isUserSeeking = true;
+    this.pendingTargetTime = targetTime;
     this.audio.currentTime = Math.min(Math.max(0, targetTime), duration);
     this.currentChapterIndex = this.getCurrentChapterIndex();
 
     if (this.seekTimer) clearTimeout(this.seekTimer);
     this.seekTimer = setTimeout(() => {
       this.isUserSeeking = false;
+      this.pendingTargetTime = null;
       this.updatePlaybackProgressUI();
     }, 250);
 
@@ -1103,13 +1160,7 @@ class PlayerController {
   nextChapter() {
     if (!this.currentBook || !this.currentBook.chapters) return;
     if (this.currentChapterIndex < this.currentBook.chapters.length - 1) {
-      const nextCh = this.currentBook.chapters[this.currentChapterIndex + 1];
-      this.audio.currentTime = this.getChapterStartTime(nextCh);
-      this.currentChapterIndex = this.getCurrentChapterIndex();
-      this.saveProgress(true);
-      this.updateUI();
-      this.notifyTrackChange();
-      this.notifyTimeUpdate();
+      this.playChapter(this.currentChapterIndex + 1);
     }
   }
 
@@ -1122,16 +1173,10 @@ class PlayerController {
     const timeInChapter = this.audio.currentTime - startTime;
     
     if (timeInChapter > 3) {
-      this.audio.currentTime = startTime;
+      this.playChapter(this.currentChapterIndex);
     } else if (this.currentChapterIndex > 0) {
-      const prevCh = this.currentBook.chapters[this.currentChapterIndex - 1];
-      this.audio.currentTime = this.getChapterStartTime(prevCh);
+      this.playChapter(this.currentChapterIndex - 1);
     }
-    this.currentChapterIndex = this.getCurrentChapterIndex();
-    this.saveProgress(true);
-    this.updateUI();
-    this.notifyTrackChange();
-    this.notifyTimeUpdate();
   }
 
   setVolume(val) {
@@ -1383,6 +1428,7 @@ class PlayerController {
     this.updatePlaybackProgressUI();
     this.updatePlayStateUI();
     this.updateSleepTimerUI();
+    this.updateMediaSessionMetadata();
 
     // Init volume fill
     this.setVolume(this.volume);
@@ -1403,6 +1449,8 @@ class PlayerController {
     localStorage.setItem("aura_timeline_mode", this.timelineMode);
     this.updatePlaybackProgressUI();
     this.updateTimelineModeUI();
+    this.updateMediaSessionMetadata();
+    this.updateMediaSessionPositionState();
   }
 
   updateTimelineModeUI() {
@@ -1412,7 +1460,7 @@ class PlayerController {
 
     const npBtn = document.getElementById("np-view-mode-btn");
     if (npBtn) {
-      npBtn.innerHTML = `<i data-lucide="${iconName}"></i><span>${isChapter ? "Chapter" : "Book"}</span>`;
+      npBtn.innerHTML = `<i data-lucide="${iconName}"></i>`;
       npBtn.setAttribute("title", `Toggle Book / Chapter View (${labelText})`);
     }
 
@@ -1486,12 +1534,14 @@ class PlayerController {
     }
 
     this.updateTimelineModeUI();
+    this.updateMediaSessionPositionState();
     popoutManager.updateProgress();
   }
 
   updatePlayStateUI() {
     const isPaused = this.audio.paused;
     const playIconName = isPaused ? "play" : "pause";
+    this.updateMediaSessionPlaybackState();
 
     if (this.playBtn) {
       this.playBtn.innerHTML = `<i data-lucide="${playIconName}"></i>`;
@@ -1563,6 +1613,115 @@ class PlayerController {
     });
 
     popoutManager.update();
+  }
+
+  // iOS / Mobile Lock Screen & System Media Integration (MediaSession API)
+  setupMediaSession() {
+    if (!("mediaSession" in navigator)) return;
+
+    const actionHandlers = [
+      ["play", () => this.play()],
+      ["pause", () => this.pause()],
+      ["stop", () => this.pause()],
+      ["seekbackward", (details) => this.skip(-(details.seekOffset || 15))],
+      ["seekforward", (details) => this.skip(details.seekOffset || 30)],
+      ["seekto", (details) => {
+        if (details.seekTime !== undefined && details.seekTime !== null) {
+          if (this.timelineMode === "chapter") {
+            const chapter = this.getCurrentChapter();
+            const chStart = chapter ? this.getChapterStartTime(chapter) : 0;
+            this.seek(chStart + details.seekTime);
+          } else {
+            this.seek(details.seekTime);
+          }
+        }
+      }],
+      ["previoustrack", () => this.prevChapter()],
+      ["nexttrack", () => this.nextChapter()]
+    ];
+
+    for (const [action, handler] of actionHandlers) {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch (e) {
+        console.debug(`[Aura MediaSession] Action '${action}' not supported:`, e);
+      }
+    }
+  }
+
+  updateMediaSessionMetadata() {
+    if (!("mediaSession" in navigator) || !this.currentBook) return;
+
+    const chapter = this.getCurrentChapter();
+    const chapterTitle = chapter ? (chapter.title || `Chapter ${this.currentChapterIndex + 1}`) : "Chapter 1";
+
+    let effectiveCover = this.currentBook.cover || 
+      (typeof this.currentBook.id === "number" ? `${getApiBase()}/api/audiobooks/${this.currentBook.id}/cover` : "/assets/covers/default.png");
+
+    let absoluteCoverUrl;
+    try {
+      absoluteCoverUrl = new URL(effectiveCover, window.location.origin).href;
+    } catch (_) {
+      absoluteCoverUrl = effectiveCover;
+    }
+
+    const isChapterView = (this.timelineMode === "chapter");
+    // When Book View: Lock screen shows Book Title (top), Author (bottom)
+    // When Chapter View: Lock screen shows Chapter Title (top), Book Title (bottom)
+    const metaTitle = isChapterView ? chapterTitle : (this.currentBook.title || "Audiobook");
+    const metaArtist = isChapterView ? (this.currentBook.title || "Audiobook") : (this.currentBook.author || "Unknown Author");
+    const metaAlbum = isChapterView ? (this.currentBook.author || "") : (this.currentBook.seriesName || "");
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: metaTitle,
+      artist: metaArtist,
+      album: metaAlbum,
+      artwork: [
+        { src: absoluteCoverUrl, sizes: "96x96", type: "image/jpeg" },
+        { src: absoluteCoverUrl, sizes: "128x128", type: "image/jpeg" },
+        { src: absoluteCoverUrl, sizes: "192x192", type: "image/jpeg" },
+        { src: absoluteCoverUrl, sizes: "256x256", type: "image/jpeg" },
+        { src: absoluteCoverUrl, sizes: "384x384", type: "image/jpeg" },
+        { src: absoluteCoverUrl, sizes: "512x512", type: "image/jpeg" }
+      ]
+    });
+
+    this.updateMediaSessionPositionState();
+  }
+
+  updateMediaSessionPositionState() {
+    if (!("mediaSession" in navigator) || !("setPositionState" in navigator.mediaSession)) return;
+    if (!this.currentBook || !this.audio) return;
+
+    const isChapterView = (this.timelineMode === "chapter");
+    let dur = this.audio.duration;
+    let cur = this.audio.currentTime || 0;
+
+    if (isChapterView) {
+      const chapter = this.getCurrentChapter();
+      const chDur = chapter ? this.getChapterDuration(chapter, this.currentChapterIndex, this.currentBook.chapters) : 0;
+      const chStart = chapter ? this.getChapterStartTime(chapter) : 0;
+      if (chDur && isFinite(chDur) && chDur > 0) {
+        dur = chDur;
+        cur = Math.min(Math.max(0, cur - chStart), chDur);
+      }
+    }
+
+    if (dur && isFinite(dur) && dur > 0) {
+      try {
+        const clampedCur = Math.min(Math.max(0, cur), dur);
+        navigator.mediaSession.setPositionState({
+          duration: dur,
+          playbackRate: this.audio.playbackRate || 1.0,
+          position: clampedCur
+        });
+      } catch (err) {}
+    }
+  }
+
+  updateMediaSessionPlaybackState() {
+    if (!("mediaSession" in navigator)) return;
+    navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
   }
 
   // Decoupled communication via Event Bus
