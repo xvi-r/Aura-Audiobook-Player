@@ -67,7 +67,11 @@ export const renderNowPlaying = () => {
     <div class="np-player-container fade-in">
       <!-- Top Action Bar -->
       <div class="np-top-action-bar">
-        <button class="np-action-pill-btn" id="np-popout-btn" title="Pop out into Mini Player">
+        <div class="np-header-brand mobile-only">
+          <span class="np-header-brand-title">NOW PLAYING</span>
+        </div>
+
+        <button class="np-action-pill-btn desktop-only" id="np-popout-btn" title="Pop out into Mini Player">
           <i data-lucide="picture-in-picture-2"></i>
           <span>Mini Player</span>
         </button>
@@ -139,26 +143,24 @@ export const renderNowPlaying = () => {
         <!-- 5. Secondary Utility Toolbar -->
         <div class="np-utilities-toolbar">
           <!-- Chapters Selector -->
-
-          <!-- Chapters Selector -->
           <div class="util-btn" id="np-chapters-btn" title="Chapters List" role="button" tabindex="0">
             <i data-lucide="list-music"></i>
-            <span>Chapters</span>
-            <div class="util-popup np-chapters-popup" id="np-chapters-popup">
-              <!-- Rendered dynamically -->
+            <span class="btn-text">Chapters</span>
+            <div class="util-popup np-chapters-popup desktop-only" id="np-chapters-popup">
+              <!-- Rendered dynamically for desktop -->
             </div>
           </div>
 
           <!-- View Mode Toggle Button -->
           <div class="util-btn" id="np-view-mode-btn" title="Toggle Book / Chapter View (${player.timelineMode === 'chapter' ? 'Chapter View' : 'Book View'})" role="button" tabindex="0">
             <i data-lucide="${player.timelineMode === 'chapter' ? 'split' : 'book-open'}"></i>
-            <span>${player.timelineMode === 'chapter' ? 'Chapter' : 'Book'}</span>
+            <span class="btn-text">${player.timelineMode === 'chapter' ? 'Chapter' : 'Book'}</span>
           </div>
 
           <!-- Playback Speed Modifier -->
           <div class="util-btn" id="np-speed-btn" title="Playback Speed" role="button" tabindex="0">
             <i data-lucide="gauge"></i>
-            <span id="np-speed-label">${player.playbackSpeed}x</span>
+            <span class="btn-text" id="np-speed-label">${player.playbackSpeed}x</span>
             <div class="util-popup" id="np-speed-popup">
               <button class="popup-item ${player.playbackSpeed === 1 ? 'active' : ''}" data-rate="1.0">1.0x Normal</button>
               <button class="popup-item ${player.playbackSpeed === 1.25 ? 'active' : ''}" data-rate="1.25">1.25x Speed</button>
@@ -170,7 +172,7 @@ export const renderNowPlaying = () => {
           <!-- Sleep Timer Indicator -->
           <div class="util-btn" id="np-sleep-btn" title="Sleep Timer" role="button" tabindex="0">
             <i data-lucide="timer"></i>
-            <span id="np-sleep-label">${player.sleepSecondsLeft > 0 ? player.formatSleepTime(player.sleepSecondsLeft) : 'Sleep'}</span>
+            <span class="btn-text" id="np-sleep-label">${player.sleepSecondsLeft > 0 ? player.formatSleepTime(player.sleepSecondsLeft) : 'Sleep'}</span>
             <div class="util-popup" id="np-sleep-popup">
               <button class="popup-item ${player.sleepSecondsLeft === 0 ? 'active' : ''}" data-mins="0">Off</button>
               <button class="popup-item" data-mins="10">10 Minutes</button>
@@ -181,8 +183,8 @@ export const renderNowPlaying = () => {
             </div>
           </div>
 
-          <!-- Volume Controller -->
-          <div class="volume-container">
+          <!-- Volume Controller (Desktop only) -->
+          <div class="volume-container desktop-only">
             <button class="player-btn" id="np-volume-mute" title="Mute Toggle">
               <i data-lucide="${player.isMuted ? 'volume-x' : 'volume-2'}" id="np-volume-icon"></i>
             </button>
@@ -196,6 +198,39 @@ export const renderNowPlaying = () => {
               value="${player.isMuted ? 0 : player.volume}"
               aria-label="Volume Slider"
             />
+          </div>
+        </div>
+      </div>
+
+      <!-- Dedicated Chapters Slide-Up Sheet Modal (Mobile only) -->
+      <div class="np-chapters-sheet-backdrop" id="np-chapters-sheet-backdrop">
+        <div class="np-chapters-sheet" id="np-chapters-sheet">
+          <div class="np-sheet-handle"></div>
+          <div class="np-sheet-header">
+            <div class="np-sheet-title-group">
+              <h3>Chapters</h3>
+              <span class="np-sheet-count">${book.chapters.length} chapters</span>
+            </div>
+            <button class="np-sheet-close-btn" id="np-sheet-close-btn" title="Close Chapters" aria-label="Close">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="np-sheet-list" id="np-sheet-list">
+            ${book.chapters.map((ch, idx) => {
+              const isActive = idx === player.currentChapterIndex;
+              const chTitle = ch.title || `Chapter ${idx + 1}`;
+              const dur = player.getChapterDuration(ch, idx, book.chapters);
+              const durationStr = dur > 0 ? player.formatTime(dur) : "--:--";
+              return `
+                <div class="np-sheet-item ${isActive ? 'active' : ''}" data-idx="${idx}">
+                  <div class="np-sheet-item-left">
+                    <i data-lucide="${isActive && player.isPlaying ? 'volume-2' : 'play-circle'}"></i>
+                    <span class="np-sheet-item-title">${chTitle}</span>
+                  </div>
+                  <span class="np-sheet-item-dur">${durationStr}</span>
+                </div>
+              `;
+            }).join("")}
           </div>
         </div>
       </div>
@@ -233,6 +268,46 @@ const setupNPEventListeners = (book, coverUrl) => {
   const artworkWrapper = document.querySelector(".np-artwork-wrapper");
 
 
+
+  // Mobile touch swipe-down controls to dismiss Now Playing view
+  const playerContainer = document.querySelector(".np-player-container");
+  if (playerContainer) {
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let isTrackingSwipe = false;
+
+    playerContainer.addEventListener("touchstart", (e) => {
+      // Do not intercept interactions on scrubber, bottom sheet, or popups
+      if (e.target.closest("input") || e.target.closest(".np-chapters-sheet") || e.target.closest(".np-chapters-popup")) {
+        return;
+      }
+      if (e.touches && e.touches.length === 1) {
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+        isTrackingSwipe = true;
+      }
+    }, { passive: true });
+
+    playerContainer.addEventListener("touchend", (e) => {
+      if (!isTrackingSwipe) return;
+      isTrackingSwipe = false;
+      if (e.changedTouches && e.changedTouches.length === 1) {
+        const deltaY = e.changedTouches[0].clientY - touchStartY;
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        // Natural downward swipe gesture: > 50px downward, primarily vertical
+        if (deltaY > 50 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
+          window.location.hash = "#library";
+        }
+      }
+    }, { passive: true });
+  }
+
+  const backToLibBtn = document.getElementById("np-back-to-lib");
+  if (backToLibBtn) {
+    backToLibBtn.addEventListener("click", () => {
+      window.location.hash = "#library";
+    });
+  }
 
   if (artworkWrapper) {
     artworkWrapper.style.cursor = "pointer";
@@ -376,13 +451,13 @@ const setupNPEventListeners = (book, coverUrl) => {
     });
   }
 
-  // Chapters popover list population & click handling
+  // Desktop chapters popover list population & click handling
   if (chaptersPopup && player.currentBook && player.currentBook.chapters) {
     chaptersPopup.innerHTML = player.currentBook.chapters.map((ch, idx) => {
       const isActive = idx === player.currentChapterIndex;
       return `
         <button class="popup-item ${isActive ? 'active' : ''}" data-idx="${idx}">
-          ${ch.title}
+          ${ch.title || `Chapter ${idx + 1}`}
         </button>
       `;
     }).join("");
@@ -399,12 +474,49 @@ const setupNPEventListeners = (book, coverUrl) => {
     });
   }
 
+  // Chapters click handler: mobile opens bottom sheet, desktop toggles popup
+  const chaptersSheet = document.getElementById("np-chapters-sheet-backdrop");
+  const sheetCloseBtn = document.getElementById("np-sheet-close-btn");
+
   if (chaptersBtn) {
     chaptersBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      chaptersBtn.classList.toggle("active");
-      if (speedBtn) speedBtn.classList.remove("active");
-      if (sleepBtn) sleepBtn.classList.remove("active");
+      if (window.innerWidth <= 768) {
+        if (chaptersSheet) chaptersSheet.classList.toggle("active");
+        if (speedPopup) speedPopup.classList.remove("active");
+        if (sleepPopup) sleepPopup.classList.remove("active");
+        if (speedBtn) speedBtn.classList.remove("active");
+        if (sleepBtn) sleepBtn.classList.remove("active");
+      } else {
+        chaptersBtn.classList.toggle("active");
+        if (speedBtn) speedBtn.classList.remove("active");
+        if (sleepBtn) sleepBtn.classList.remove("active");
+      }
+    });
+  }
+
+  if (sheetCloseBtn && chaptersSheet) {
+    sheetCloseBtn.addEventListener("click", () => {
+      chaptersSheet.classList.remove("active");
+    });
+  }
+
+  if (chaptersSheet) {
+    chaptersSheet.addEventListener("click", (e) => {
+      if (e.target === chaptersSheet) {
+        chaptersSheet.classList.remove("active");
+      }
+    });
+
+    chaptersSheet.querySelectorAll(".np-sheet-item").forEach(item => {
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const idx = parseInt(item.dataset.idx, 10);
+        player.playChapter(idx);
+        chaptersSheet.querySelectorAll(".np-sheet-item").forEach(p => p.classList.remove("active"));
+        item.classList.add("active");
+        chaptersSheet.classList.remove("active");
+      });
     });
   }
 
@@ -412,9 +524,11 @@ const setupNPEventListeners = (book, coverUrl) => {
   if (speedBtn && speedPopup) {
     speedBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      speedPopup.classList.toggle("active");
       speedBtn.classList.toggle("active");
+      if (sleepPopup) sleepPopup.classList.remove("active");
       if (sleepBtn) sleepBtn.classList.remove("active");
-      if (chaptersBtn) chaptersBtn.classList.remove("active");
+      if (chaptersSheet) chaptersSheet.classList.remove("active");
     });
 
     speedPopup.querySelectorAll(".popup-item").forEach(item => {
@@ -424,9 +538,12 @@ const setupNPEventListeners = (book, coverUrl) => {
         player.setSpeed(rate);
         
         // Update labels & active status
-        document.getElementById("np-speed-label").textContent = `${rate}x`;
+        const npSpeedLabel = document.getElementById("np-speed-label");
+        if (npSpeedLabel) npSpeedLabel.textContent = `${rate}x`;
+        speedBtn.setAttribute("title", `Playback Speed (${rate}x)`);
         speedPopup.querySelectorAll(".popup-item").forEach(p => p.classList.remove("active"));
         item.classList.add("active");
+        speedPopup.classList.remove("active");
         speedBtn.classList.remove("active");
       });
     });
@@ -436,9 +553,11 @@ const setupNPEventListeners = (book, coverUrl) => {
   if (sleepBtn && sleepPopup) {
     sleepBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      sleepPopup.classList.toggle("active");
       sleepBtn.classList.toggle("active");
+      if (speedPopup) speedPopup.classList.remove("active");
       if (speedBtn) speedBtn.classList.remove("active");
-      if (chaptersBtn) chaptersBtn.classList.remove("active");
+      if (chaptersSheet) chaptersSheet.classList.remove("active");
     });
 
     sleepPopup.querySelectorAll(".popup-item").forEach(item => {
@@ -449,6 +568,7 @@ const setupNPEventListeners = (book, coverUrl) => {
 
         sleepPopup.querySelectorAll(".popup-item").forEach(p => p.classList.remove("active"));
         item.classList.add("active");
+        sleepPopup.classList.remove("active");
         sleepBtn.classList.remove("active");
       });
     });
@@ -465,8 +585,9 @@ const setupNPEventListeners = (book, coverUrl) => {
 
   // Document listener to close popups on outside click
   document.addEventListener("click", () => {
+    if (speedPopup) speedPopup.classList.remove("active");
     if (speedBtn) speedBtn.classList.remove("active");
+    if (sleepPopup) sleepPopup.classList.remove("active");
     if (sleepBtn) sleepBtn.classList.remove("active");
-    if (chaptersBtn) chaptersBtn.classList.remove("active");
   });
 };

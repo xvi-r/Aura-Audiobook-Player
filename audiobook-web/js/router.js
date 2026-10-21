@@ -2,8 +2,13 @@
 class Router {
   constructor() {
     this.routes = {};
+    this.guard = null;
     window.addEventListener("popstate", () => this.handleRoute());
     window.addEventListener("hashchange", () => this.handleRoute());
+  }
+
+  setGuard(guardFn) {
+    this.guard = guardFn;
   }
 
   addRoute(path, callback) {
@@ -37,6 +42,15 @@ class Router {
       path = "/library";
     }
 
+    // Execute route authentication/permission guard
+    if (this.guard) {
+      const redirected = this.guard(path);
+      if (redirected && redirected !== path) {
+        this.navigate(redirected);
+        return;
+      }
+    }
+
     // Check for book details route: /book/book-id-here
     if (path.startsWith("/book/")) {
       const bookId = path.replace("/book/", "");
@@ -68,8 +82,13 @@ class Router {
     if (this.routes[path]) {
       this.routes[path]();
     } else {
-      // Fallback to library
-      this.navigate("/library");
+      // Fallback
+      if (this.guard) {
+        const redirected = this.guard("/library");
+        this.navigate(redirected || "/library");
+      } else {
+        this.navigate("/library");
+      }
     }
   }
 

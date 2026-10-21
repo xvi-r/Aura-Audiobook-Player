@@ -25,6 +25,12 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
     });
     clearTimeout(timer);
 
+    if (response.status === 401 && !url.includes("/api/users/login") && !url.includes("/api/users/register") && !url.includes("/api/users/me")) {
+      console.warn("[Aura Fetch] Unauthorized (HTTP 401). Triggering auth session reset...");
+      localStorage.removeItem("aura_username");
+      window.dispatchEvent(new CustomEvent("aura-unauthorized"));
+    }
+
     if (response.status === 428 && !url.includes("/setup")) {
       console.log("[Aura Fetch] Server setup required (HTTP 428). Redirecting to /setup...");
       if (window.location.pathname !== "/setup") {

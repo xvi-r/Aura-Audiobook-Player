@@ -195,13 +195,14 @@ export async function renderDetails(bookId) {
   // Build the details panel
   let html = `
     <!-- Top Bar: Back Button Left, Minimalist Icon Buttons Right -->
-    <div class="back-btn-container" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; width: 100%;">
+    <div class="back-btn-container">
       <button class="back-btn" id="btn-back-lib">
         <i data-lucide="arrow-left"></i>
         Back to Library
       </button>
 
-      <div class="details-top-icon-actions" style="display: flex; gap: 10px; align-items: center;">
+      <!-- Desktop Top Action Icons (Heart, Edit, Delete) -->
+      <div class="details-top-icon-actions desktop-only" style="display: flex; gap: 10px; align-items: center;">
         <!-- Favorite Heart Icon Button -->
         <button class="top-icon-btn" id="details-fav-btn" title="${isFavorited ? 'Remove from Favorites' : 'Add to Favorites'}" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); color: ${isFavorited ? '#ef4444' : 'var(--text-muted)'}; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
           <i data-lucide="heart" style="${isFavorited ? 'fill: #ef4444; color: #ef4444; width: 18px; height: 18px;' : 'width: 18px; height: 18px;'}"></i>
@@ -216,6 +217,24 @@ export async function renderDetails(bookId) {
         <button class="top-icon-btn" id="details-delete-btn" title="Delete Audiobook" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
           <i data-lucide="trash-2" style="width: 18px; height: 18px; color: #ef4444;"></i>
         </button>
+      </div>
+
+      <!-- Mobile Settings Cogwheel Menu (Only Favorite & Delete) -->
+      <div class="details-mobile-actions mobile-only" style="position: relative;">
+        <button class="top-icon-btn" id="details-mobile-menu-btn" title="Book Options" aria-label="Book Options" style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14); color: var(--text-secondary); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent;">
+          <i data-lucide="settings" style="width: 18px; height: 18px;"></i>
+        </button>
+        <div class="details-mobile-menu-popup" id="details-mobile-menu-popup" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); background: rgba(24, 24, 27, 0.98); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,0.7); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); min-width: 180px; z-index: 1000; padding: 6px; flex-direction: column; gap: 4px;">
+          <button class="mobile-menu-item" id="details-mobile-fav-btn" style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: transparent; border: none; color: ${isFavorited ? '#ef4444' : 'var(--text-main)'}; font-size: 0.88rem; font-weight: 600; border-radius: 10px; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;">
+            <i data-lucide="heart" style="${isFavorited ? 'fill: #ef4444; color: #ef4444; width: 16px; height: 16px;' : 'width: 16px; height: 16px;'}"></i>
+            <span>${isFavorited ? 'Remove Favorite' : 'Favorite Book'}</span>
+          </button>
+          <div style="height: 1px; background: rgba(255, 255, 255, 0.08); margin: 2px 6px;"></div>
+          <button class="mobile-menu-item" id="details-mobile-delete-btn" style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: transparent; border: none; color: #ef4444; font-size: 0.88rem; font-weight: 600; border-radius: 10px; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;">
+            <i data-lucide="trash-2" style="width: 16px; height: 16px; color: #ef4444;"></i>
+            <span>Delete Book</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -234,19 +253,14 @@ export async function renderDetails(bookId) {
             <span>${mainPlayLabel}</span>
           </button>
 
-          <div class="details-secondary-actions">
-            <!-- Reset Progress (only show if has progress) -->
-            <button class="btn-secondary" id="details-reset-btn" ${!hasProgress ? "disabled style='opacity:0.5; cursor:default;'" : ""}>
-              <i data-lucide="rotate-ccw"></i>
-              <span>Restart</span>
-            </button>
-
-            <!-- Download Button -->
-            <button class="btn-secondary" id="details-download-btn">
-              <i data-lucide="download"></i>
-              <span>Download</span>
-            </button>
-          </div>
+          ${hasProgress ? `
+            <div class="details-secondary-actions" style="margin-top: 6px;">
+              <button class="btn-secondary" id="details-reset-btn">
+                <i data-lucide="rotate-ccw"></i>
+                <span>Restart</span>
+              </button>
+            </div>
+          ` : ""}
         </div>
       </div>
 
@@ -387,6 +401,49 @@ function setupDetailsEvents(book, container) {
     });
   }
 
+  // Mobile Settings Cogwheel Menu Event Handlers
+  const mobileMenuBtn = document.getElementById("details-mobile-menu-btn");
+  const mobileMenuPopup = document.getElementById("details-mobile-menu-popup");
+  const mobileFavBtn = document.getElementById("details-mobile-fav-btn");
+  const mobileDeleteBtn = document.getElementById("details-mobile-delete-btn");
+
+  if (mobileMenuBtn && mobileMenuPopup) {
+    mobileMenuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isVisible = mobileMenuPopup.style.display === "flex";
+      mobileMenuPopup.style.display = isVisible ? "none" : "flex";
+    });
+
+    document.addEventListener("click", () => {
+      if (mobileMenuPopup) mobileMenuPopup.style.display = "none";
+    });
+  }
+
+  if (mobileFavBtn) {
+    mobileFavBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      let favs = JSON.parse(localStorage.getItem("aura_favorites") || "[]");
+      const idx = favs.indexOf(book.id);
+      if (idx >= 0) {
+        favs.splice(idx, 1);
+      } else {
+        favs.push(book.id);
+      }
+      localStorage.setItem("aura_favorites", JSON.stringify(favs));
+      renderDetails(book.id);
+    });
+  }
+
+  if (mobileDeleteBtn) {
+    mobileDeleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const deleteBtn = document.getElementById("details-delete-btn");
+      if (deleteBtn) {
+        deleteBtn.click();
+      }
+    });
+  }
+
   // Edit Metadata Modal Event Handler
   const editBtn = document.getElementById("details-edit-btn");
   if (editBtn) {
@@ -403,8 +460,9 @@ function setupDetailsEvents(book, container) {
       if (isLoadedInPlayer) {
         player.togglePlay();
       } else {
-        // Load current book and resume (null elapsedBookSeconds triggers canonical timestamp reconciliation)
-        player.loadBook(book, 0, null, true);
+        // Resolve known resume position to eliminate 0:00 audio flash
+        const resumePos = (book.progressSeconds || book.position || reconcileBookProgress(book.id, book).position || 0);
+        player.loadBook(book, 0, resumePos > 0 ? resumePos : null, true);
       }
     });
   }
@@ -497,28 +555,11 @@ function setupDetailsEvents(book, container) {
     });
   }
 
-  // Mock Download Button with dynamic state interaction
-  const downloadBtn = document.getElementById("details-download-btn");
-  let downloadState = "idle"; // idle, downloading, completed
-  if (downloadBtn) {
-    downloadBtn.addEventListener("click", () => {
-      if (downloadState === "idle") {
-        downloadState = "downloading";
-        downloadBtn.innerHTML = `<i class="spinner-icon" data-lucide="loader"></i><span>Downloading...</span>`;
-        if (window.lucide) window.lucide.createIcons();
-
-        // Simulate download time
-        setTimeout(() => {
-          downloadState = "completed";
-          downloadBtn.className = "btn-secondary downloaded";
-          downloadBtn.innerHTML = `<i data-lucide="check-circle"></i><span>Downloaded</span>`;
-          if (window.lucide) window.lucide.createIcons();
-        }, 1500);
-      }
-    });
-  }
 
   // Centralized updater for chapters table active state and play/pause icon
+  let lastActiveIdx = -999;
+  let lastIsPlaying = null;
+
   const updateActiveChapterUI = (activeIdx, isPlaying) => {
     const listContainer = document.getElementById("chapters-list-container");
     if (!listContainer) return;
@@ -527,6 +568,12 @@ function setupDetailsEvents(book, container) {
     const isThisBookLoaded = player.currentBook && String(player.currentBook.id) === String(book.id);
     const targetIdx = isThisBookLoaded ? activeIdx : -1;
     const targetPlaying = isThisBookLoaded && isPlaying;
+
+    if (lastActiveIdx === targetIdx && lastIsPlaying === targetPlaying) {
+      return;
+    }
+    lastActiveIdx = targetIdx;
+    lastIsPlaying = targetPlaying;
 
     const items = listContainer.querySelectorAll(".chapter-item");
     items.forEach((item) => {
@@ -558,6 +605,9 @@ function setupDetailsEvents(book, container) {
     }
   };
 
+  let activeChapterTransitionLock = null;
+  let activeChapterTransitionTimer = null;
+
   // Chapters click handlers (fully functional chapter navigation!)
   const chapterItems = container.querySelectorAll(".chapter-item");
   chapterItems.forEach(item => {
@@ -565,6 +615,12 @@ function setupDetailsEvents(book, container) {
       const idx = parseInt(item.getAttribute("data-idx"), 10);
       const ch = book.chapters[idx];
       if (!ch) return;
+
+      activeChapterTransitionLock = idx;
+      if (activeChapterTransitionTimer) clearTimeout(activeChapterTransitionTimer);
+      activeChapterTransitionTimer = setTimeout(() => {
+        activeChapterTransitionLock = null;
+      }, 600);
 
       const startTime = player.getChapterStartTime(ch);
       player.loadBook(book, idx, startTime, true);
@@ -577,6 +633,7 @@ function setupDetailsEvents(book, container) {
   // Listen to global player updates to keep active chapters highlighted dynamically
   const timeUpdateHandler = (e) => {
     if (!e.detail || String(e.detail.bookId) !== String(book.id)) return;
+    if (activeChapterTransitionLock !== null) return;
     const isThisBookPlaying = player.currentBook && String(player.currentBook.id) === String(book.id) && player.isPlaying;
     const activeIdx = (e.detail.chapterIndex !== undefined && e.detail.chapterIndex !== null)
       ? e.detail.chapterIndex
@@ -586,6 +643,14 @@ function setupDetailsEvents(book, container) {
 
   const trackChangeHandler = (e) => {
     if (!e.detail || String(e.detail.bookId) !== String(book.id)) return;
+    if (activeChapterTransitionLock !== null) {
+      if (e.detail.chapterIndex === activeChapterTransitionLock) {
+        activeChapterTransitionLock = null;
+        if (activeChapterTransitionTimer) clearTimeout(activeChapterTransitionTimer);
+      } else {
+        return;
+      }
+    }
     const isThisBookPlaying = player.currentBook && String(player.currentBook.id) === String(book.id) && player.isPlaying;
     const activeIdx = (e.detail.chapterIndex !== undefined && e.detail.chapterIndex !== null)
       ? e.detail.chapterIndex
@@ -660,6 +725,7 @@ function setupDetailsEvents(book, container) {
 
   // Store references on the container element so they can be cleaned up if needed
   const cleanup = () => {
+    if (activeChapterTransitionTimer) clearTimeout(activeChapterTransitionTimer);
     container.style.overflow = "";
     window.removeEventListener("audiobook-time-update", timeUpdateHandler);
     window.removeEventListener("audiobook-track-change", trackChangeHandler);
@@ -973,7 +1039,7 @@ export async function renderEbookDetails(ebookId) {
 
   let html = `
     <!-- Top Bar: Back Button Left -->
-    <div class="back-btn-container" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; width: 100%;">
+    <div class="back-btn-container">
       <button class="back-btn" id="btn-back-lib">
         <i data-lucide="arrow-left"></i>
         Back to E-Books Library
