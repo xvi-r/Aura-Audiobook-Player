@@ -34,6 +34,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/",
                                 "/index.html",
+                                "/manifest.webmanifest",
+                                "/manifest.json",
+                                "/sw.js",
                                 "/css/**",
                                 "/js/**",
                                 "/assets/**",
@@ -55,6 +58,7 @@ public class SecurityConfig {
                                 "/ebook/**",
                                 "/api/users/register",
                                 "/api/users/login",
+                                "/api/users/me",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**")
                         .permitAll()

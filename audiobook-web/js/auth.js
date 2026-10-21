@@ -14,6 +14,47 @@ export function setAuthenticatedUser(username) {
     localStorage.removeItem("aura_username");
   }
   updateAuthSidebarUI();
+  window.dispatchEvent(new CustomEvent("aura-auth-changed", { detail: { username } }));
+}
+
+export async function checkAuthSession() {
+  const API_BASE = getApiBase();
+  try {
+    const response = await fetchWithTimeout(`${API_BASE}/api/users/me`, {}, 1500);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.username) {
+        setAuthenticatedUser(data.username);
+        return data.username;
+      }
+    }
+  } catch (err) {
+    console.debug("[Aura Auth] Active session check bypassed/failed:", err);
+  }
+  setAuthenticatedUser(null);
+  return null;
+}
+
+export function syncShellUI(activePath = window.location.pathname) {
+  const isAuthenticated = !!getAuthenticatedUser();
+  const cleanPath = activePath.startsWith("#") ? "/" + activePath.slice(1) : activePath;
+  const isAuthPage = cleanPath === "/login" || cleanPath === "/register" || cleanPath === "/setup";
+  const shouldHideAllNavigation = !isAuthenticated || isAuthPage;
+
+  document.body.classList.toggle("auth-mode", shouldHideAllNavigation);
+
+  const sidebar = document.getElementById("sidebar");
+  const mobileNav = document.getElementById("mobile-nav-bar");
+  const playerBar = document.getElementById("audio-player-bar");
+
+  if (shouldHideAllNavigation) {
+    if (sidebar) sidebar.style.display = "none";
+    if (mobileNav) mobileNav.style.display = "none";
+    if (playerBar) playerBar.style.display = "none";
+  } else {
+    if (sidebar) sidebar.style.display = "";
+    if (mobileNav) mobileNav.style.display = "";
+  }
 }
 
 export function clearUserSessionData() {
@@ -46,7 +87,8 @@ export async function logoutUser() {
   }
   clearUserSessionData();
   setAuthenticatedUser(null);
-  router.navigate("#login");
+  syncShellUI("/login");
+  router.navigate("/login");
 }
 
 export function updateAuthSidebarUI() {
@@ -89,12 +131,6 @@ export function updateAuthSidebarUI() {
   } else {
     accountList.innerHTML = `
       <li class="nav-item">
-        <a href="#whos-listening" id="sidebar-whos-listening-link">
-          <i data-lucide="users"></i>
-          <span>Who's Listening?</span>
-        </a>
-      </li>
-      <li class="nav-item">
         <a href="#login" id="sidebar-login-link">
           <i data-lucide="log-in"></i>
           <span>Sign In / Register</span>
@@ -112,28 +148,32 @@ export function renderAuthView(activeTab = "login") {
   const container = document.getElementById("main-content");
   if (!container) return;
 
+  syncShellUI(activeTab === "login" ? "/login" : "/register");
+
   container.className = "fade-in";
   container.style.overflowY = "auto";
-  container.style.paddingBottom = "80px";
 
   const isLogin = activeTab === "login";
 
   container.innerHTML = `
-    <header class="library-header" style="margin-bottom: 24px;">
-      <div class="library-header-left">
-        <h1 class="library-title">${isLogin ? "Sign In" : "Register"}</h1>
-        <p class="library-subtitle">${isLogin ? "Sign in to sync your audiobook collection & playback progress." : "Create an account on your personal audiobook server."}</p>
-      </div>
-    </header>
-
     <div class="auth-view-wrapper">
+      <div class="auth-brand-header">
+        <div class="auth-brand-logo">
+          <div class="logo-icon">
+            <i data-lucide="headphones"></i>
+          </div>
+          <span class="logo-text">AURA</span>
+        </div>
+        <p class="auth-brand-tagline">Personal Audiobook & E-Book Streaming</p>
+      </div>
+
       <div class="auth-card">
         <div class="auth-card-header">
           <div class="auth-badge-icon">
             <i data-lucide="${isLogin ? 'key-round' : 'user-plus'}"></i>
           </div>
           <h2 class="auth-card-title">${isLogin ? "Welcome Back" : "Create Account"}</h2>
-          <p class="auth-card-subtitle">${isLogin ? "Enter your credentials to access your audiobooks." : "Fill out your username and password to get started."}</p>
+          <p class="auth-card-subtitle">${isLogin ? "Sign in to access your audiobook collection & playback progress." : "Fill out your username and password to get started."}</p>
         </div>
 
         <div class="auth-nav-tabs">
@@ -231,10 +271,10 @@ export function renderAuthView(activeTab = "login") {
   const alertContainer = document.getElementById("auth-alert-container");
 
   if (tabLogin) {
-    tabLogin.addEventListener("click", () => renderAuthView("login"));
+    tabLogin.addEventListener("click", () => router.navigate("/login"));
   }
   if (tabRegister) {
-    tabRegister.addEventListener("click", () => renderAuthView("register"));
+    tabRegister.addEventListener("click", () => router.navigate("/register"));
   }
 
   if (togglePwdBtn && pwdInput) {
@@ -295,7 +335,10 @@ export function renderAuthView(activeTab = "login") {
           if (response.ok) {
             setAuthenticatedUser(username);
             showAuthAlert(alertContainer, "Signed in successfully!", "success");
-            setTimeout(() => router.navigate("#library"), 600);
+            setTimeout(() => {
+              syncShellUI("/library");
+              router.navigate("/library");
+            }, 350);
           } else {
             let msg = "Invalid username or password.";
             try {
@@ -315,7 +358,10 @@ export function renderAuthView(activeTab = "login") {
           if (response.ok) {
             setAuthenticatedUser(username);
             showAuthAlert(alertContainer, "Account created successfully!", "success");
-            setTimeout(() => router.navigate("#library"), 600);
+            setTimeout(() => {
+              syncShellUI("/library");
+              router.navigate("/library");
+            }, 350);
           } else {
             let msg = "Registration failed. Username may already exist.";
             try {
@@ -415,7 +461,7 @@ export function renderWhosListeningView() {
         }
         clearUserSessionData();
         setAuthenticatedUser(username);
-        router.navigate("#library");
+        router.navigate("/library");
       }
     });
   });
@@ -423,8 +469,7 @@ export function renderWhosListeningView() {
   const addBtn = document.getElementById("whos-listening-add-btn");
   if (addBtn) {
     addBtn.addEventListener("click", () => {
-      router.navigate("#register");
+      router.navigate("/register");
     });
   }
 }
-
