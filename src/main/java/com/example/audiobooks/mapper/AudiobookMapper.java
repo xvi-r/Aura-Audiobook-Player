@@ -28,6 +28,7 @@ public class AudiobookMapper {
                         audiobook.getId(),
                         audiobook.getTitle(),
                         audiobook.getAuthor(),
+                        audiobook.getNarrator(),
                         audiobook.getDuration(),
                         audiobook.getGenres(),
                         userAudiobook != null ? userAudiobook.getPosition() : 0.0,

@@ -13,6 +13,7 @@ public class UserAudiobookMapper {
                 userAudiobook.getAudiobook().getId(),
                 userAudiobook.getAudiobook().getTitle(),
                 userAudiobook.getAudiobook().getAuthor(),
+                userAudiobook.getAudiobook().getNarrator(),
                 userAudiobook.getAudiobook().getDuration(),
                 userAudiobook.getAudiobook().getGenres(),
                 userAudiobook.getPosition(),

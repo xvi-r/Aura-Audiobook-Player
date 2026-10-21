@@ -70,6 +70,7 @@ public class AudiobookControllerTest {
             49L, 
             "Doctor Aphra", 
             "Sarah Kuhn", 
+            "Marc Thompson", 
             20100.0, 
             List.of("Sci-Fi"), 
             1500.0, 
