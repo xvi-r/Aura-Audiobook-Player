@@ -8,6 +8,7 @@ public record UserAudiobookResponse(
         Long audioBookId,
         String title,
         String author,
+        String narrator,
         double duration,
         List<String> genres,
         double position,

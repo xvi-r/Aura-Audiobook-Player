@@ -39,7 +39,7 @@ public class UserAudiobookServiceTest {
         mockUserAudiobook.setLastPlayedAt(Instant.now());
 
         UserAudiobookResponse mockResponse = new UserAudiobookResponse(
-            10L, "Dune", "Frank Herbert", 1200.0, List.of("Sci-Fi"), 500.0, false, Instant.now()
+            10L, "Dune", "Frank Herbert", "Scott Brick", 1200.0, List.of("Sci-Fi"), 500.0, false, Instant.now()
         );
 
         when(userAudiobookRepository.findTop8ContinueListeningForUser(userId))
